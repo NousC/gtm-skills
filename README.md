@@ -27,7 +27,7 @@ Setup recipes for Claude Code routines — paste the prompt at
 One command adds a skill to your Claude Code:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/bennetglinder1/gtm-skills/main/.claude/skills/linkedin-engagers/SKILL.md \
+curl -sL https://raw.githubusercontent.com/NousC/gtm-skills/main/.claude/skills/linkedin-engagers/SKILL.md \
   --create-dirs -o ~/.claude/skills/linkedin-engagers/SKILL.md
 ```
 
@@ -36,7 +36,7 @@ curl -sL https://raw.githubusercontent.com/bennetglinder1/gtm-skills/main/.claud
 Clone the repo into the project where you want every skill available:
 
 ```bash
-git clone https://github.com/bennetglinder1/gtm-skills
+git clone https://github.com/NousC/gtm-skills
 ```
 
 The `.claude/skills/` layout means Claude Code discovers every skill
