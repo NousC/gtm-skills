@@ -211,16 +211,18 @@ engagements in a `signals: []` array for step 11.
 
 ### 8. Score each engager against your ICP
 
-Read your GTM profile from Nous, then score every deduped engager against it.
+Read your workspace GTM facts from Nous, then score every deduped engager
+against them.
 
 ```bash
-# Read the workspace GTM profile (what you sell, who your ICP is)
-curl -s "https://api.opennous.cloud/v2/context" \
-  -H "X-Api-Key: $NOUS_API_KEY"
+# Read the workspace GTM facts (ICP, target market, what you sell)
+curl -s "https://api.opennous.cloud/v2/workspace/facts" \
+  -H "Authorization: Bearer $NOUS_API_KEY"
 ```
 
-Use the `gtm_profile` / ICP text in that response to judge each engager on the
-data you already have (title, company, headline):
+Returns a `facts` array, each `{ category, content }`. Use the entries whose
+`category` is `ICP`, `Market`, or `Product` to judge each engager on the data
+you already have (title, company, headline):
 
 - `fit` — clearly matches the ICP. Keep, mark `icp_fit: "fit"`.
 - `maybe` — adjacent but unclear. Keep, mark `icp_fit: "maybe"`.
@@ -261,6 +263,11 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
 operator that they're about to create duplicate records. Response:
 `{ inserted, skipped }`.
 
+**If steps 9 or 10 fail (non-2xx), do not abort the run.** Warn the operator,
+then continue to steps 11-13 so the engagements are still recorded as public
+signals and written to the Google Sheet. The lead list is recoverable; the
+scraped engagers are not worth re-paying Apify for.
+
 ### 11. Record every engagement as a public signal
 
 Do this for **every engager — including the ones skipped as duplicates in step
@@ -268,7 +275,7 @@ Do this for **every engager — including the ones skipped as duplicates in step
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/v2/observations" \
-  -H "X-Api-Key: $NOUS_API_KEY" \
+  -H "Authorization: Bearer $NOUS_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "focus": "<engager_linkedin_url>",
