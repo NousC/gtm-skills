@@ -211,18 +211,18 @@ engagements in a `signals: []` array for step 11.
 
 ### 8. Score each engager against your ICP
 
-Read your workspace GTM facts from Nous, then score every deduped engager
-against them.
+Read your GTM profile from Nous, then score every deduped engager against it.
+The GTM profile is the workspace GTM facts endpoint (docs: GTM Profile):
 
 ```bash
-# Read the workspace GTM facts (ICP, target market, what you sell)
-curl -s "https://api.opennous.cloud/v2/workspace/facts" \
+# Your GTM profile — filter to the categories that define your ICP
+curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market,Product,Pricing,Competitors" \
   -H "Authorization: Bearer $NOUS_API_KEY"
 ```
 
-Returns a `facts` array, each `{ category, content }`. Use the entries whose
-`category` is `ICP`, `Market`, or `Product` to judge each engager on the data
-you already have (title, company, headline):
+Returns `{ facts: [{ id, category, content, source, recorded_at }], count,
+by_category }`. Use the `ICP`, `Market`, and `Product` facts to judge each
+engager on the data you already have (title, company, headline):
 
 - `fit` — clearly matches the ICP. Keep, mark `icp_fit: "fit"`.
 - `maybe` — adjacent but unclear. Keep, mark `icp_fit: "maybe"`.
