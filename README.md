@@ -11,6 +11,7 @@ One repo, focused on GTM. Each skill is a folder under `.claude/skills/`.
 |-------|------------|
 | [`linkedin-engagers`](.claude/skills/linkedin-engagers/SKILL.md) | Turn a creator's recent engagers into an ICP-scored Nous lead list, saved to Nous and a Google Sheet |
 | [`meeting-brief`](.claude/skills/meeting-brief/SKILL.md) | Before a meeting, pull what Nous knows, read their recent posts and company site, and write a sourced brief grounded in your GTM angle |
+| [`morning-brief`](.claude/skills/morning-brief/SKILL.md) | Each morning, cross your Timestripe goals with your Nous funnel into one accountable brief — what to work first, where the funnel stands, and a 1% Kaizen logged to Notion |
 | [`campaign-writer`](.claude/skills/campaign-writer/SKILL.md) | Write a full outbound sequence grounded in your GTM profile and what's actually replied — learns the winning variant, suppresses who you've touched, records the copy back |
 
 ## Routines
