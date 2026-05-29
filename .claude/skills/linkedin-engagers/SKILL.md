@@ -211,8 +211,7 @@ engagements in a `signals: []` array for step 11.
 
 ### 8. Score each engager against your ICP
 
-Read your GTM profile from Nous, then score every deduped engager against it.
-The GTM profile is the workspace GTM facts endpoint (docs: GTM Profile):
+Read your GTM profile from Nous, then score every deduped engager against it:
 
 ```bash
 # Your GTM profile — filter to the categories that define your ICP
