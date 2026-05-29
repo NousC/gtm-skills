@@ -9,7 +9,8 @@ One repo, focused on GTM. Each skill is a folder under `.claude/skills/`.
 
 | Skill | Use it for |
 |-------|------------|
-| [`linkedin-engagers`](.claude/skills/linkedin-engagers/SKILL.md) | Turn a creator's recent engagers into a deduped Nous lead list |
+| [`linkedin-engagers`](.claude/skills/linkedin-engagers/SKILL.md) | Turn a creator's recent engagers into an ICP-scored Nous lead list, saved to Nous and a Google Sheet |
+| [`meeting-brief`](.claude/skills/meeting-brief/SKILL.md) | Before a meeting, pull what Nous knows, read their recent posts and company site, and write a sourced brief grounded in your GTM angle |
 | [`cold-email-writer`](.claude/skills/cold-email-writer/SKILL.md) | Write a cold-email campaign that learns from past replies — pre-write suppression + pattern lookup baked in |
 
 ## Routines
