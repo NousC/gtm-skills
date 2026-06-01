@@ -33,26 +33,26 @@ The skill will ask for what it needs:
 - **Google Sheet** to mirror into (a `GOOGLE_SHEET_ID`, optional).
 - At the end: **outbound tool** to push to (HeyReach / Smartlead / none).
 
-## Setup
+## First-run setup (you, the agent, run this once as a short interview)
 
-Two env vars in your shell rc (`~/.zshrc` or equivalent):
+Detect what's already set, ask only for what's missing, one thing at a time.
 
-```
-export APIFY_TOKEN=apify_api_xxx          # apify.com → Settings → Integrations
-export NOUS_API_KEY=pk_xxx                # opennous.cloud → Settings → API keys
-```
+**1. Apify — the scrape.** Check for `APIFY_TOKEN`. Missing → "I scrape the
+engagers through Apify, about $2.50 per 300 leads. Add your token once:
+`export APIFY_TOKEN=apify_api_xxx` (apify.com → Settings → Integrations)."
 
-Optional, only if you mirror to a sheet or push to outbound:
+**2. Nous — the lead list + ICP scoring.** Check for `NOUS_API_KEY`. Missing →
+"Add your Nous key: `export NOUS_API_KEY=pk_xxx` (opennous.cloud → Settings →
+API keys). No account yet? It's free at opennous.cloud." ICP scoring also needs
+a **GTM profile** set (opennous.cloud → GTM Context); without one the skill
+keeps every engager and skips the fit step — tell them, then continue.
 
-```
-export GOOGLE_SHEET_ID=1AbC...            # the sheet to append leads into
-export HEYREACH_API_KEY=...               # or SMARTLEAD_API_KEY
-```
+**3. Optional outputs.** Only if they want them: mirror to a sheet
+(`export GOOGLE_SHEET_ID=1AbC...`, plus `gcloud auth login` once) or push to
+outbound (`export HEYREACH_API_KEY=...` for LinkedIn, `SMARTLEAD_API_KEY` for
+email).
 
-Estimated cost is around **$2.50 per 300 leads** on HarvestAPI pricing.
-
-ICP scoring needs a **GTM profile set up in Nous** (opennous.cloud → GTM
-Context). Without one, the skill keeps every engager and skips the fit step.
+Then confirm the creators and the window before spending.
 
 The skill calls **three** Apify HarvestAPI actors — your token must have access:
 

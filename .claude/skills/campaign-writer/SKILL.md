@@ -29,13 +29,29 @@ It resolves what it needs:
 - **Goal** — book a meeting, earn a reply, drive to a resource.
 - **Length** — touches in the sequence (default 3).
 
-## Setup
+## First-run setup (you, the agent, run this once as a short interview)
 
-- **Nous MCP** attached (`get_gtm_profile`, `query`, `record`). This is how it
-  reads your profile, learns what worked, and records the campaign.
-- Optional **`NOUS_API_KEY`** to read/write the copy store
-  (`/api/campaign-messages`) and a **sequencer API key**
-  (Smartlead / Instantly / HeyReach) to push the finished campaign.
+Detect what's connected, ask only for what's missing, one thing at a time.
+
+**1. Nous — your GTM profile and what's replied.** Check whether the Nous MCP is
+connected by trying `get_gtm_profile`.
+- Connected → continue.
+- Not → "This skill runs on Nous. Connect it in one line:
+  `claude mcp add nous -e NOUS_API_KEY=<your-key> -- npx -y @opennous/mcp`. Get
+  your key at opennous.cloud → Settings → API keys (the `pk_` one). No account?
+  It's free at opennous.cloud." Confirm `get_gtm_profile` returns before moving on.
+
+**2. Is your GTM profile set?** The angle and the suppression both read from it.
+If `get_gtm_profile` comes back empty: "Set up your GTM profile at
+opennous.cloud → GTM Context first, so the angle is drawn from what you actually
+sell, not a guess."
+
+**3. Which sequencer do you send from?** Ask: "Smartlead, Instantly, or
+HeyReach? Add that key and I'll push the finished campaign in; otherwise I'll
+leave it as a draft." Also note `NOUS_API_KEY` lets it record the copy per
+variant (`/api/campaign-messages`) so the next campaign learns.
+
+Then confirm the segment, channel, and length before drafting.
 
 ## Core philosophy
 

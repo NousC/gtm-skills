@@ -21,14 +21,31 @@ The flow: **Timestripe → Nous → Claude Code → Notion.**
 
 `/morning-brief` — or schedule it to run every morning (see Customize).
 
-## Setup
+## First-run setup (you, the agent, run this once as a short interview)
 
-- **Nous MCP** attached (`query`, `account`, `attention`) — the GTM funnel.
-- **Timestripe** access (CLI or API key) — day goals, week goals, milestones.
-- **Notion** connector — the Kaizen database the brief writes to.
-- A **`config.md`** in the skill's folder — who and what to filter out
-  (recurring meetings, non-prospect contacts, vendor cold-pitches) so the funnel
-  reads clean. The skill tunes this over time from the "open issues" it logs.
+Detect what's connected, ask only for what's missing, one thing at a time.
+
+**1. Nous — the GTM funnel.** Check whether the Nous MCP is connected (try the
+`query` tool).
+- Connected → continue.
+- Not → "The funnel reads from Nous. Connect it in one line:
+  `claude mcp add nous -e NOUS_API_KEY=<your-key> -- npx -y @opennous/mcp`. Key
+  at opennous.cloud → Settings → API keys (the `pk_` one). It's free at
+  opennous.cloud."
+
+**2. Goals — Timestripe or your PM tool.** Ask: "Do you use Timestripe? Connect
+its CLI or API key and I'll read your day goals, week goals, and milestones. On
+another tool like ClickUp, Notion, or Linear instead? Tell me which and I'll
+read goals from there."
+
+**3. Notion — the Kaizen log.** "Connect the Notion connector and point me at
+the database where I should log each day's Kaizen as `proposed`."
+
+**4. config.md — the filters.** "I'll keep a `config.md` in this skill's folder
+to keep recurring meetings, non-prospects, and vendor pitches out of the funnel.
+We'll tune it from the open issues each brief surfaces." Create it if missing.
+
+Then it's ready to run every morning.
 
 ## The 1% Kaizen idea — the heart of it
 
