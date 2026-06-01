@@ -13,6 +13,7 @@ One repo, focused on GTM. Each skill is a folder under `.claude/skills/`.
 | [`meeting-brief`](.claude/skills/meeting-brief/SKILL.md) | Before a meeting, pull what Nous knows, read their recent posts and company site, and write a sourced brief grounded in your GTM angle |
 | [`morning-brief`](.claude/skills/morning-brief/SKILL.md) | Each morning, cross your Timestripe goals with your Nous funnel into one accountable brief — what to work first, where the funnel stands, and a 1% Kaizen logged to Notion |
 | [`client-report`](.claude/skills/client-report/SKILL.md) | Write a weekly, client-ready report from a client's Nous workspace — lead lists, who engaged, the funnel, what's converting — into a document, ending in next week's moves |
+| [`hiring-signals`](.claude/skills/hiring-signals/SKILL.md) | Discover companies hiring the role you sell into (TheirStack), score them against your Nous ICP, dedupe against your pipeline, record the signal, and draft a cold sequence that opens on it |
 | [`campaign-writer`](.claude/skills/campaign-writer/SKILL.md) | Write a full outbound sequence grounded in your GTM profile and what's actually replied — learns the winning variant, suppresses who you've touched, records the copy back |
 
 ## Routines
