@@ -104,10 +104,16 @@ wait for a yes — e.g. *"25 companies match, about 25 credits at 1 per job.
 Reveal them?"* Never reveal without showing the number first. Start with a small
 `limit`; widen only on confirmation.
 
-### 3. Collapse to companies + the signal
+### 3. Collapse to companies + score the signal
 
 One row per company: the role(s) they're hiring, how many, and when posted.
 That's the signal you'll lead with — "hiring 2 SDRs, posted 3 days ago".
+
+**Rate the signal's strength 1-10** (recency × relevance). A fresh post (under
+~2 weeks) for a role your product directly serves is high-intent (**8-10**); an
+older post or a loosely-related role is lower (**3-5**). The strength rides with
+the lead and tells the sequence how hard to lean on the trigger — strong signals
+open pain-led, weaker ones fall back to the segment's common pain.
 
 ### 4. Score against your ICP (Nous)
 
@@ -162,7 +168,7 @@ holds the values.
 - Create or reuse a **"Hiring signals" lead list** (`POST /api/lead-lists`), and
   set its columns once (`PATCH /api/lead-lists/:id` with `columns`):
   `hiring_role`, `hiring_date`, `hiring_count`, `job_url`, `icp_score`,
-  `signal_source`.
+  `signal_strength`, `signal_source`.
 - Insert the decision maker (`POST /api/lead-lists/:id/leads`) — identity in the
   normal columns, the hiring context in `fields`:
 
@@ -171,7 +177,7 @@ holds the values.
   "linkedin_url": "https://www.linkedin.com/in/janedoe", "company": "Acme",
   "fields": { "hiring_role": "SDR", "hiring_date": "2026-05-30",
               "hiring_count": 2, "job_url": "https://...", "icp_score": 82,
-              "signal_source": "theirstack" } }
+              "signal_strength": 9, "signal_source": "theirstack" } }
 ```
 
 Workspace-wide dedup on email / linkedin_url runs automatically. Also record the

@@ -129,9 +129,25 @@ firmographics and the pain they imply.
 
 ### 5. Pick the angle
 
-Cross your offer (step 2) × the segment's pain × what converted (step 3).
-Propose 2-3 angles, recommend the one the evidence supports, and let the
-operator confirm before drafting.
+Cross your offer (step 2) × the segment's **situation** × what converted
+(step 3). Ground every angle in the situation — what this segment's team is
+dealing with on a Monday morning — not their demographics. "They're a 200-person
+SaaS" is not an angle; "their two SDRs are drowning in unworked inbound" is.
+
+Pick the pattern that fits the signal's strength:
+
+- **Pain-led** — the signal points to an acute, specific pain. Open on it:
+  *"Most {segment} right now are dealing with {pain}. Is that you?"*
+- **Value-led** — you can show value before asking. Open with a specific insight
+  or finding you can hand them.
+- **Segment fallback** — the signal is only moderate (firmographic fit, no
+  behavior). Lead with the most common pain for the profile and ask if it lands.
+
+Rate the signal honestly (a competitor-with-friction or a fresh, relevant
+trigger is strong; a firmographic match alone is weak) — strong signals earn
+pain-led, weak ones get the fallback. Propose 2-3 angles, recommend the one the
+evidence supports, and **always include a fallback angle** for the leads the
+main signal doesn't fit. Let the operator confirm before drafting.
 
 ### 6. Write the sequence
 
@@ -169,6 +185,10 @@ suppression summary, the sequence). On approval:
 - **Human approves before send.** Never push to a live sequencer unprompted.
 - **Record the copy.** The campaign isn't done until its copy is on the record,
   keyed by variant, so the loop can learn.
+- **Situations over demographics.** Open on what the segment is dealing with,
+  never on what they look like on paper.
+- **Always ship a fallback.** Every campaign includes a fallback angle for the
+  leads the main signal doesn't fit, so the whole list has something to send.
 
 ## Frequently asked questions
 
