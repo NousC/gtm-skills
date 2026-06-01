@@ -88,9 +88,14 @@ curl -s -X POST "https://api.theirstack.com/v1/jobs/search" \
 Useful filters: `job_title_or` / `job_title_pattern_or`, `posted_at_max_age_days`
 (or `posted_at_gte`/`posted_at_lte`), `job_country_code_or`,
 `min_employee_count` / `max_employee_count`, `industry_or`,
-`company_technology_slug_or` (companies using a given tech). **Cost: 1 credit
-per job returned** — start with a small `limit`, show the count, confirm before
-widening.
+`company_technology_slug_or` (companies using a given tech).
+
+**Cost — state it before you spend.** TheirStack charges **1 credit per job
+returned**. With a tight role filter that's about 1 job per company, so a
+25-company run is roughly **25 credits**. Before revealing, say it plainly and
+wait for a yes — e.g. *"25 companies match, about 25 credits at 1 per job.
+Reveal them?"* Never reveal without showing the number first. Start with a small
+`limit`; widen only on confirmation.
 
 ### 3. Collapse to companies + the signal
 
@@ -170,8 +175,10 @@ this week, scored to your ICP, with the reason recorded so your outreach can
 reference it.
 
 **What does a run cost?**
-TheirStack charges 1 credit per job returned. A tight `job_title_or` + a small
-`limit` keeps it cheap; the skill always confirms the count before spending.
+TheirStack charges 1 credit per job returned. With a tight `job_title_or` that's
+about 1 job per company, so a 25-company run is roughly 25 credits. The skill
+states the estimate and confirms before spending — you always see the number
+first.
 
 **Do I get contacts or just companies?**
 Companies + the signal by default. Add an enrichment key and it resolves the
