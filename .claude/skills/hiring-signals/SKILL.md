@@ -113,26 +113,46 @@ keep `fit` and `maybe`. Never invent a score.
 For each surviving company, check whether it's already in your workspace (by
 domain or name). Drop the ones you're already working. Keep only **net-new**.
 
-### 6. Record the signal and save the list (Nous)
+### 6. Resolve the decision maker
 
-For each net-new, on-ICP company:
-- **Record the signal** on the account with the `record` tool (or
-  `POST /v2/observations`): `property: signal.hiring`, `value: { role, count,
-  posted_at, source: "theirstack" }`. This is the durable context.
-- **Save a scored lead list** via `POST /api/lead-lists` then
-  `/:id/leads` — the company, the signal in `fields`, and the ICP score.
+For each net-new, on-ICP company, find the **buyer for the trigger** — the
+person who'd own the purchase (a VP or Head of Sales when they're hiring SDRs),
+not the recruiter — using an enrichment provider (Apollo / Prospeo). Capture
+their name, email, linkedin_url, and title. If no decision maker resolves, hold
+the company for later enrichment rather than guessing a contact.
 
-### 7. Resolve the buyer (optional)
+### 7. Save the decision maker as a lead, with the hiring data in its columns
 
-If an enrichment key is set, find the **buyer persona** for the trigger (e.g. a
-VP of Sales when they're hiring SDRs), not the recruiter, and attach them to the
-lead so the sequence has a real contact. Without it, save the account + signal
-and resolve contacts later.
+The decision maker is a **lead** — not a contact, not a company — so it goes in
+the leads table. The leads table already supports custom columns, so **no schema
+change is needed**: the list's `columns` define them, each lead's `fields` JSONB
+holds the values.
 
-### 8. Draft a signal-grounded sequence
+- Create or reuse a **"Hiring signals" lead list** (`POST /api/lead-lists`), and
+  set its columns once (`PATCH /api/lead-lists/:id` with `columns`):
+  `hiring_role`, `hiring_date`, `hiring_count`, `job_url`, `icp_score`,
+  `signal_source`.
+- Insert the decision maker (`POST /api/lead-lists/:id/leads`) — identity in the
+  normal columns, the hiring context in `fields`:
 
-Write a short cold sequence that opens on the trigger and bridges to your offer
-(from the GTM profile). Three emails, per-lead variables:
+```json
+{ "name": "Jane Doe", "email": "jane@acme.com",
+  "linkedin_url": "https://www.linkedin.com/in/janedoe", "company": "Acme",
+  "fields": { "hiring_role": "SDR", "hiring_date": "2026-05-30",
+              "hiring_count": 2, "job_url": "https://...", "icp_score": 82,
+              "signal_source": "theirstack" } }
+```
+
+Workspace-wide dedup on email / linkedin_url runs automatically. Also record the
+hiring signal on the lead's timeline (`signal.hiring` observation) for durable
+context, but the campaign-ready data lives in the lead's columns.
+
+### 8. Export to a campaign, or draft the sequence
+
+The lead list is now export-ready. Push it to your sequencer (Instantly /
+Smartlead / HeyReach) with the hiring `fields` as merge variables, hand it to
+`campaign-writer` for the full data-driven campaign, or draft a short
+signal-grounded sequence here, three emails with per-lead variables:
 
 ```
 E1  Noticed {{company}} is hiring {{count}} {{role}}s. Scaling that team usually
