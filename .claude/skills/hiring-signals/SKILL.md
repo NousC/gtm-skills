@@ -18,8 +18,8 @@ The flow: **TheirStack → Claude Code → Nous.**
 
 ## How to invoke
 
-`/hiring-signals` — or *"find companies hiring SDRs in the last two weeks that
-fit my ICP."*
+`/hiring-signals` — or *"find 25 companies hiring SDRs in the last two weeks
+that fit my ICP."*
 
 ## First-run setup (you, the agent, run this once as a short interview)
 
