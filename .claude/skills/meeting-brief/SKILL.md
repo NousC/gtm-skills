@@ -31,21 +31,39 @@ The skill will resolve what it needs:
   ("my 2pm"), it reads the event and briefs every external attendee.
 - **Look-back window** for their posts (default `28` days, four weeks).
 
-## Setup
+## First-run setup (you, the agent, run this once as a short interview)
 
-- **Nous MCP** attached in Claude Code (`get_account`, `get_gtm_profile`,
-  `record`). This is how the skill reads the account and writes the brief back.
-- **Apify** for the post scrape:
+The first time this runs, check what's connected and fill only the gaps. Detect
+before you ask, ask one thing at a time, and do the work for the user wherever
+you can. Once everything is in place, skip straight to the brief on every later
+run and only re-ask if something's missing.
 
-```
-export APIFY_TOKEN=apify_api_xxx          # apify.com → Settings → Integrations
-```
+**1. Nous — the account record this brief reads and writes back.**
+Check whether the Nous MCP is connected by trying the `get_account` tool.
+- Connected → move on.
+- Not connected → set it up for them. Tell them exactly this, don't make them
+  hunt:
+  > "This brief runs on Nous. Connect it in one line:
+  > `claude mcp add nous -e NOUS_API_KEY=<your-key> -- npx -y @opennous/mcp`
+  > Get your key at opennous.cloud → Settings → API keys (the `pk_` one). No
+  > account yet? It's free at opennous.cloud — sign up, grab the key, paste it
+  > in. Want me to wait while you do that?"
+  After they run it, confirm `get_account` works before continuing.
 
-Optional: a **Google Calendar** connector (to brief a whole meeting) and a
-**Google Docs / Drive** connector (to drop the brief into a doc).
+**2. Apify — the LinkedIn post scrape.**
+Check for `APIFY_TOKEN` in the environment.
+- Present → move on.
+- Missing → "I read their recent posts through Apify, about $0.30 per person.
+  Add your token once: `export APIFY_TOKEN=apify_api_xxx` (apify.com → Settings
+  → Integrations)."
 
-Reading one person's posts costs roughly **$0.30** on HarvestAPI pricing — one
-paid Apify run per person.
+**3. Calendar (optional).**
+Only if they want a whole meeting briefed: "Attach a Google Calendar connector
+and I'll brief every external attendee. Otherwise just name the person." A
+Google Docs / Drive connector is optional too, to drop the brief into a doc.
+
+When the inputs are ready, confirm before spending: "Ready. Brief <person>? One
+Apify call, about $0.30." Then run the brief.
 
 The post scrape uses one Apify HarvestAPI actor (your token must have access):
 
