@@ -43,8 +43,15 @@ write.
 `get_gtm_profile` is empty: "Set up your GTM profile at opennous.cloud → GTM
 Context first, so I score and write from what you actually sell."
 
-**4. Optional** — an enrichment key (Apollo) to resolve the buyer persona per
-company, and a sequencer key to push the sequence. Skip for a draft-only run.
+**4. Apollo — to find the decision maker.** Check for `APOLLO_API_KEY`. Missing →
+"To turn each company into an emailable lead, I find the buyer through Apollo.
+Add your key once: `export APOLLO_API_KEY=...` (apollo.io → Settings → API). It
+charges a credit per email revealed, so I'll preview and confirm before
+spending. Prefer Prospeo? Say so and I'll use that instead." Without an
+enrichment key the skill stops at companies + signals and creates no leads.
+
+**5. Optional** — a sequencer key (Instantly / Smartlead / HeyReach) to push the
+finished list. Skip for a draft-only run.
 
 ## Core philosophy
 
@@ -113,13 +120,37 @@ keep `fit` and `maybe`. Never invent a score.
 For each surviving company, check whether it's already in your workspace (by
 domain or name). Drop the ones you're already working. Keep only **net-new**.
 
-### 6. Resolve the decision maker
+### 6. Resolve the decision maker (Apollo)
 
 For each net-new, on-ICP company, find the **buyer for the trigger** — the
-person who'd own the purchase (a VP or Head of Sales when they're hiring SDRs),
-not the recruiter — using an enrichment provider (Apollo / Prospeo). Capture
-their name, email, linkedin_url, and title. If no decision maker resolves, hold
-the company for later enrichment rather than guessing a contact.
+person who'd own the purchase, not the recruiter. Map the hiring role to the
+buyer (cross it with what you sell, from the GTM profile):
+
+- hiring SDRs / BDRs → VP / Head / Director of Sales (or RevOps)
+- hiring marketers → VP / Head of Marketing
+- hiring engineers → CTO / VP Engineering
+
+Find them, then reveal the email:
+
+```bash
+# Find the buyer at the company
+curl -s -X POST "https://api.apollo.io/v1/mixed_people/search" \
+  -H "X-Api-Key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "organization_domains": ["acme.com"],
+        "person_titles": ["VP Sales","Head of Sales","Director of Sales"],
+        "per_page": 1 }'
+
+# Reveal the email (1 Apollo credit)
+curl -s -X POST "https://api.apollo.io/v1/people/match" \
+  -H "X-Api-Key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "first_name": "Jane", "last_name": "Doe", "domain": "acme.com" }'
+```
+
+**Confirm before revealing** — like the TheirStack step: *"25 buyers to reveal,
+about 25 Apollo credits. Go?"* Capture name, email, linkedin_url, and title. If
+no confident buyer or email resolves for a company, hold it as a company +
+signal account rather than guessing a contact. (Prospeo works the same way if
+that's the key you set.)
 
 ### 7. Save the decision maker as a lead, with the hiring data in its columns
 
