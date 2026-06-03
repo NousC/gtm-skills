@@ -27,6 +27,11 @@ Detect what's connected, ask only for what's missing, one thing at a time.
 **1. DiscoLike — lookalike company discovery.** Check for `DISCOLIKE_API_KEY`.
 Missing → "I find the similar companies through DiscoLike. Get a key at
 app.discolike.com → account → keys, then `export DISCOLIKE_API_KEY=...`."
+DiscoLike is a subscription that converts to credits, not pure pay-as-you-go —
+it starts at **$99/mo (the Starter plan), and that $99 becomes your credit
+balance**. Discovery then draws those credits down at **$3.50 per 1,000 new
+company records** (cheaper on higher tiers), and discovered records are cached
+in your account for 90 days, so re-running the same search costs nothing.
 
 **2. Apollo — the decision maker + email.** Check for `APOLLO_API_KEY`. Missing →
 "I find the founder at each company and reveal the email through Apollo (use a
@@ -82,9 +87,9 @@ the cheapest way to catch a wrong-segment run before it costs credits.
 
 ## Phase 2 — Confirm the ICP and a rough cost, then wait
 
-Translate to the structured ICP, preview the real volume with DiscoLike's free
-`/count`, and lay out the rough cost. **Wait for an explicit yes** before
-spending.
+Translate to the structured ICP, preview the real volume with DiscoLike's
+low-cost `/count`, and lay out the rough cost. **Wait for an explicit yes**
+before spending.
 
 ```
 ICP I'll search:
@@ -95,15 +100,18 @@ ICP I'll search:
   Buyer:    Founder / CEO / Owner
   Target:   5,000 companies
 
-DiscoLike preview: ~5,200 match. After dedup against your Nous pipeline,
+DiscoLike preview: ~5,000 match. After dedup against your Nous pipeline,
 ~3,500 net-new. Expected ~2,800 verified founder emails.
 
-Rough cost: ~$15 discovery + ~$140 enrichment + ~$1 verify  ≈  $155.
+Rough cost: ~$18 discovery + ~$140 enrichment + ~$1 verify  ≈  $159.
 Run it?
 ```
 
-Estimate: DiscoLike record cost ≈ companies × ~$3/1k; Apollo/FullEnrich ≈
-net-new founders × match-rate × ~$0.05; verify is rounding error.
+Estimate: DiscoLike record cost ≈ companies × $3.50/1k (Starter rate, less on
+higher tiers); Apollo/FullEnrich ≈ net-new founders × match-rate × ~$0.05;
+verify is rounding error. DiscoLike bills per company it returns, so the Nous
+dedup mainly saves the **enrichment** spend (you only reveal emails for net-new),
+and the 90-day record cache means a repeated search is free.
 
 ## Phase 3 — Run, save to Nous, report back
 
@@ -124,7 +132,7 @@ running — they don't wait in the terminal:
 ### 1. Discover lookalike companies — DiscoLike
 
 ```bash
-# Preview the count first (free)
+# Preview the count first (low-cost)
 curl -s "https://api.discolike.com/v1/count?domain=anna-agency.com&domain=bravo-collective.com&country=US&employee_range=1,10" \
   -H "x-discolike-key: $DISCOLIKE_API_KEY"
 
@@ -247,9 +255,12 @@ does, from its website — so "similar to X" finds companies in the same busines
 not just the same size band.
 
 **What does a run cost?**
-Discovery is cheap (~$3 per 1,000 companies). The cost is the email enrichment,
-~$0.05 per found email, charge-on-found. The dedup keeps you from paying it
-twice on companies you already have. Phase 2 always shows the estimate first.
+Two parts. **Discovery** is DiscoLike — a subscription that converts to credits,
+from **$99/mo (Starter)**, drawn down at **$3.50 per 1,000 new companies** (less
+on higher tiers), with records cached 90 days so repeats are free. **Enrichment**
+is the email reveal, ~$0.05 per found email, charge-on-found. The Nous dedup
+keeps you from paying that reveal twice on companies you already have. Phase 2
+always shows the estimate first.
 
 **Do I have to wait in the terminal?**
 No. Phase 3 starts the run and hands you back — the leads stream into the Nous

@@ -32,7 +32,9 @@ This skill builds on `lead-builder` (discovery + enrichment) and `campaign-write
 `claude mcp add nous -e NOUS_API_KEY=<key> -- npx -y @opennous/mcp`.
 
 **2. DiscoLike** (`DISCOLIKE_API_KEY`) — lookalike company discovery, seeded by
-your closed-deal domains.
+your closed-deal domains. It's a subscription that converts to credits, from
+**$99/mo (Starter)**, drawn down at **$3.50 per 1,000 new companies** (less on
+higher tiers); records cache 90 days, so repeats are free.
 
 **3. Apollo** (`APOLLO_API_KEY`, master key) — the buyer + email. Optional
 `FULLENRICH_API_KEY` (waterfall) and `MILLIONVERIFIER_API_KEY` (verify).
@@ -113,7 +115,7 @@ This is the pattern you'll write in — proven by revenue, not by a reply.
 Cloning: 5 closed deals (B2B fintech, 50–200, Stripe + Segment)
 Lookalikes: ~2,000 companies → ~1,400 net-new after dedup
 Winning angle: "[the opener/angle that closed the seed deals]"
-Rough cost: ~$6 discovery + ~$70 enrichment ≈ $76
+Rough cost: ~$7 discovery + ~$70 enrichment ≈ $77
 Run it?
 ```
 
