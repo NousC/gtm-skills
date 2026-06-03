@@ -60,6 +60,26 @@ lookalike good — one at a time, conversationally:
 Only move on when you have a clear niche **or** example domains, plus size,
 geography, buyer title, and a target count.
 
+### Cross-check against the saved ICP
+
+Before you confirm, pull the workspace's own GTM profile from Nous and compare
+it to what they just asked for — the saved ICP is the source of truth, the
+one-off brief might be a new segment or a slip:
+
+```bash
+curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
+  -H "Authorization: Bearer $NOUS_API_KEY"
+```
+
+- **Aligned** → say so in one line ("matches your saved ICP") and move on.
+- **Diverges** → surface it plainly and ask before spending:
+  > "Your saved ICP is **insurance companies, 200+ employees** — but you asked
+  > for **agency founders, 1–10**. Should I target this one-off, your saved ICP,
+  > or a refined mix? And do you want me to update the saved ICP?"
+
+Never run a list that contradicts the saved ICP without an explicit yes — it's
+the cheapest way to catch a wrong-segment run before it costs credits.
+
 ## Phase 2 — Confirm the ICP and a rough cost, then wait
 
 Translate to the structured ICP, preview the real volume with DiscoLike's free
