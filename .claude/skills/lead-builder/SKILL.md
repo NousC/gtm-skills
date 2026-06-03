@@ -1,175 +1,236 @@
 ---
 name: lead-builder
-description: Describe your ICP in plain English, or give a few examples to match, and it builds an enriched lead list — company, decision maker, email, and LinkedIn — via waterfall enrichment across Apollo, Prospeo, and any provider you've keyed in. It dedupes against your pipeline and saves the list straight into Nous, ready for outbound. Before it spends a credit, it shows your parsed ICP and the exact cost and waits for your go.
+description: Describe your ICP or give example companies to match, and it builds an enriched lead list — lookalike companies, the decision maker at each, and a verified email — saved straight into a Nous lead list. It runs in three phases: it sharpens your prompt, shows the ICP and a rough cost for approval, then runs the pipeline and tells you the leads are landing in Nous. Discovery via DiscoLike, people + email via Apollo (with a FullEnrich waterfall), deduped against Nous before you spend.
 ---
 
 # Lead-list builder
 
 ## What it does
 
-Tell it who you want to reach — *"100 agency founders with 1 to 10 employees who
-focus on paid social, similar to these three"* — and it builds the list for you:
-the company, the **decision maker**, their **email** and **LinkedIn**, enriched
-through a **waterfall** so the match rate is high. It dedupes against what you
-already have and saves the list straight into a **Nous lead list**, ready to drop
-into outbound. Before it spends anything, it shows you the **ICP it parsed** and
-the **exact cost**, and waits for your yes.
+You describe who you want — *"agency founders, 1 to 10 people, US, like these
+three"* — and it builds the list: **lookalike companies**, the **decision maker**
+at each, and a **verified email**, deduped against what you already have and
+saved into a **Nous lead list** ready for outbound. It works in three guided
+phases so you never run a vague brief or spend a credit you didn't approve.
 
-The flow: **Apollo + Prospeo → Claude Code → Nous.**
+The flow: **DiscoLike → Nous (dedup) → Apollo → FullEnrich → Nous (save).**
 
 ## How to invoke
 
-`/lead-builder` — or *"find me 100 agency founders, 1 to 10 employees, who focus
-on paid social, similar to {example 1}, {example 2}."*
+`/lead-builder` — or *"find me 5,000 agency founders, 1 to 10 employees, US,
+similar to anna-agency.com and bravo-collective.com."*
 
 ## First-run setup (you, the agent, run this once as a short interview)
 
 Detect what's connected, ask only for what's missing, one thing at a time.
 
-**1. Apollo — discovery + first-pass enrichment.** Check for `APOLLO_API_KEY`.
-Missing → "I find the people and their emails through Apollo. Add your key once:
-`export APOLLO_API_KEY=...` (apollo.io → Settings → API). It charges a credit per
-email revealed, so I'll show the estimate and confirm before spending."
+**1. DiscoLike — lookalike company discovery.** Check for `DISCOLIKE_API_KEY`.
+Missing → "I find the similar companies through DiscoLike. Get a key at
+app.discolike.com → account → keys, then `export DISCOLIKE_API_KEY=...`."
 
-**2. Waterfall providers (optional but recommended).** A second email-finder so
-the ones Apollo misses still get an email: `export PROSPEO_API_KEY=...`
-(prospeo.io), or whichever finder you use (Findymail, Dropcontact). The skill
-only pays the next source when the first comes up empty.
+**2. Apollo — the decision maker + email.** Check for `APOLLO_API_KEY`. Missing →
+"I find the founder at each company and reveal the email through Apollo (use a
+master API key). `export APOLLO_API_KEY=...` (apollo.io → Settings → API)."
 
-**3. Nous — where the list lands + dedupe.** Check `NOUS_API_KEY` (and the MCP if
-you want it connected). Missing → "Add your Nous key: `export NOUS_API_KEY=pk_xxx`
-(opennous.cloud → Settings → API keys). The list saves here and dedupes against
-your pipeline. Free at opennous.cloud."
+**3. Nous — dedup + where the list lands.** Check `NOUS_API_KEY`. Missing →
+"`export NOUS_API_KEY=pk_xxx` (opennous.cloud → Settings → API keys). It dedupes
+against your pipeline and saves the list. Free at opennous.cloud."
 
-## Core philosophy
+**4. Optional, for a higher match rate.** `FULLENRICH_API_KEY` (a charge-on-found
+waterfall across 20+ sources for the emails Apollo misses) and
+`MILLIONVERIFIER_API_KEY` (a ~$0.0005/email verify pass for catch-alls).
 
-**Show the ICP and the cost before you spend.** No surprise credit burn. The
-operator sees exactly who they're targeting and what it costs, and says go.
+---
 
-**Waterfall to a high match rate.** Try the cheapest/best source first, fall to
-the next only when it misses. A lead with no email is a lead you can't use.
+## Phase 1 — Shape the prompt (never run a vague brief)
 
-**Net-new only.** Dedupe against the Nous pipeline before saving, so you never
-pay to rediscover someone you already have.
+A vague ICP wastes credits. Before anything, sharpen it. If the brief is thin
+("agency founders, 1 to 10 people"), say so and ask the questions that make the
+lookalike good — one at a time, conversationally:
 
-**The list is the start of outbound.** Enrich it fully and save it where the
-campaign writer can pick it up.
+- **What kind of agency / company?** The niche is everything — "paid-social
+  agencies" finds a sharp set; "agencies" finds noise.
+- **Example companies to match?** Ask for 1–10 company domains. This is
+  DiscoLike's lookalike input and the single biggest quality lever — "like X"
+  beats any filter.
+- **Geography?** Country (and state if relevant).
+- **Which buyer?** The title to target — Founder, CEO, Owner.
+- **How many leads?**
 
-## The process
+Only move on when you have a clear niche **or** example domains, plus size,
+geography, buyer title, and a target count.
 
-### 1. Parse the ICP
+## Phase 2 — Confirm the ICP and a rough cost, then wait
 
-Turn the description (and any examples) into structured search criteria:
-titles, company size, industry/keywords, and geography. If they gave **examples
-to match**, extract the shared pattern from those companies — size, industry,
-the keywords in how they describe themselves — and search for that lookalike.
-
-### 2. Show the ICP and the cost, then wait
-
-Before any spend, lay it out plainly and confirm:
+Translate to the structured ICP, preview the real volume with DiscoLike's free
+`/count`, and lay out the rough cost. **Wait for an explicit yes** before
+spending.
 
 ```
-Here's the ICP I'll search:
-  Titles:    Founder, CEO, Owner
-  Size:      1–10 employees
-  Focus:     paid-social marketing agencies
-  Geography: United States
-Target: 100 leads. Estimated cost: up to ~100 enrichment credits
-(Apollo first; Prospeo only on the misses). Want me to run it?
+ICP I'll search:
+  Lookalikes of: anna-agency.com, bravo-collective.com
+  Niche:    paid-social agencies
+  Size:     1–10 employees
+  Geo:      United States
+  Buyer:    Founder / CEO / Owner
+  Target:   5,000 companies
+
+DiscoLike preview: ~5,200 match. After dedup against your Nous pipeline,
+~3,500 net-new. Expected ~2,800 verified founder emails.
+
+Rough cost: ~$15 discovery + ~$140 enrichment + ~$1 verify  ≈  $155.
+Run it?
 ```
 
-Never search-and-reveal before a yes.
+Estimate: DiscoLike record cost ≈ companies × ~$3/1k; Apollo/FullEnrich ≈
+net-new founders × match-rate × ~$0.05; verify is rounding error.
 
-### 3. Discover (Apollo)
+## Phase 3 — Run, save to Nous, report back
+
+On a yes, kick off the pipeline (below), create the list, and tell the user it's
+running — they don't wait in the terminal:
+
+> "Started. About 2,800 leads will land in your new Nous list
+> **'Founder · paid-social agencies · 1–10 · US'** over the next few minutes.
+> I'll write each one in as its email verifies."
+
+**Default list title:** `<Buyer> · <niche> · <size> · <geo>` — e.g.
+`Founder · paid-social agencies · 1–10 · US`.
+
+---
+
+## The pipeline (the real calls)
+
+### 1. Discover lookalike companies — DiscoLike
 
 ```bash
-curl -s -X POST "https://api.apollo.io/v1/mixed_people/search" \
-  -H "X-Api-Key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
+# Preview the count first (free)
+curl -s "https://api.discolike.com/v1/count?domain=anna-agency.com&domain=bravo-collective.com&country=US&employee_range=1,10" \
+  -H "x-discolike-key: $DISCOLIKE_API_KEY"
+
+# Then discover
+curl -s "https://api.discolike.com/v1/discover?domain=anna-agency.com&domain=bravo-collective.com&country=US&employee_range=1,10&max_records=5000&min_similarity=60" \
+  -H "x-discolike-key: $DISCOLIKE_API_KEY"
+```
+
+Pass 1–10 seed `domain`s for the lookalike (or `icp_text=...` for a pure
+description). Returns companies with `domain`, `name`, `similarity` (0–100),
+`employees`, `address`, `description`. Keep the company `domain`s.
+
+### 2. Dedup by domain — Nous (free, before you spend)
+
+```bash
+curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "domains": ["acme.com","beta.io","gamma.co"] }'
+```
+
+Response: `{ results: [{ kind:'domain', value, status }], summary: { net_new, known, ... } }`.
+Keep only `status === 'net_new'`. You never pay to enrich the companies you
+already have.
+
+### 3. Find the decision maker — Apollo people search (free, obfuscated)
+
+Search people at the net-new domains (up to 1,000 domains per call) filtered to
+the buyer titles. This consumes **no credits** — it returns obfuscated identity
+(`id`, `first_name`, `last_name_obfuscated`, `title`, org name, `has_email`).
+
+```bash
+curl -s -X POST "https://api.apollo.io/api/v1/mixed_people/api_search" \
+  -H "x-api-key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
   -d '{ "person_titles": ["Founder","CEO","Owner"],
-        "organization_num_employees_ranges": ["1,10"],
-        "q_organization_keyword_tags": ["marketing agency","paid social"],
-        "person_locations": ["United States"],
-        "per_page": 25, "page": 1 }'
+        "q_organization_domains_list": ["acme.com","beta.io"],
+        "per_page": 100, "page": 1 }'
 ```
 
-Paginate (`page`) until you reach the target count. Each result is a person +
-their company + their LinkedIn URL (the email is masked here — reveal it next).
+Take one decision maker per company (the `id`).
 
-### 4. Waterfall-enrich each lead
-
-For every lead, get a usable email by trying sources in order, stopping at the
-first hit:
+### 4. Reveal email + LinkedIn — Apollo bulk match (paid, metered)
 
 ```bash
-# 1) Apollo reveal
-curl -s -X POST "https://api.apollo.io/v1/people/match" \
-  -H "X-Api-Key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "first_name":"Jane","last_name":"Doe","domain":"acme.com" }'
-
-# 2) On a miss, your next finder (e.g. Prospeo) by name + domain
-#    POST https://api.prospeo.io/email-finder  (X-KEY: $PROSPEO_API_KEY)
+curl -s -X POST "https://api.apollo.io/api/v1/people/bulk_match" \
+  -H "x-api-key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "details": [ {"id":"<apollo_person_id>"}, ... ],
+        "reveal_personal_emails": false }'
 ```
 
-Capture `email`, `linkedin_url`, `title`, `company`, `domain`. A lead that no
-source can verify is flagged `email: unverified` and kept aside, not guessed.
+Returns `email`, `email_status`, `linkedin_url`, org `primary_domain`, and
+`credits_consumed` (meter your spend). For anyone Apollo can't find an email
+for, fall to the waterfall.
 
-### 5. Dedupe against your pipeline (Nous)
+### 5. Waterfall the misses — FullEnrich (optional, charge-on-found)
 
-Drop anyone already in the workspace (by email or normalized linkedin_url). Keep
-only **net-new** — the bulk-insert dedupes again as a safety net.
+```bash
+# Submit (async)
+curl -s -X POST "https://app.fullenrich.com/api/v2/contact/enrich/bulk" \
+  -H "Authorization: Bearer $FULLENRICH_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "name":"lead-builder", "data":[
+        { "first_name":"Jane","last_name":"Doe","domain":"acme.com",
+          "linkedin_url":"https://www.linkedin.com/in/janedoe",
+          "enrich_fields":["contact.work_emails"] } ] }'
+# → { "enrichment_id": "<uuid>" }  then poll:
+curl -s "https://app.fullenrich.com/api/v2/contact/enrich/bulk/<uuid>" \
+  -H "Authorization: Bearer $FULLENRICH_API_KEY"
+```
 
-### 6. Save to a Nous lead list
+Returns `most_probable_work_email { email, status }` (DELIVERABLE / HIGH_PROBABILITY
+/ CATCH_ALL). Keep DELIVERABLE and HIGH_PROBABILITY.
 
-Create or reuse a lead list and insert the enriched leads:
+### 6. Verify the catch-alls — MillionVerifier (optional, ~$0.0005/email)
+
+Send the CATCH_ALL / uncertain emails to MillionVerifier's API; keep only the
+ones it returns `ok`/`good`. DELIVERABLE emails skip this step.
+
+### 7. Save to a Nous lead list
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "name": "Agency founders — paid social", "source": "lead_builder" }'
+  -d '{ "name": "Founder · paid-social agencies · 1–10 · US", "source": "lead_builder" }'
 
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "leads": [
         { "name":"Jane Doe", "email":"jane@acme.com",
-          "linkedin_url":"https://www.linkedin.com/in/janedoe",
-          "company":"Acme",
-          "fields": { "title":"Founder", "icp_match":"paid social",
-                      "enriched_by":"apollo" } } ] }'
+          "linkedin_url":"https://www.linkedin.com/in/janedoe", "company":"Acme",
+          "fields": { "title":"Founder", "niche":"paid-social agency",
+                      "similarity":74, "enriched_by":"apollo" } } ] }'
 ```
 
-The list is now in Nous, deduped and enriched — hand it to `campaign-writer`, or
-export it to your sequencer.
+Insert as they enrich so the list fills in live. Then point the user at
+`campaign-writer` to write to them.
 
 ## Hard rules — never break these
 
-- **ICP + cost before the spend.** Always show the parsed ICP and the credit
-  estimate and get a yes before discovering or revealing.
-- **Waterfall in order, stop on a hit.** Never pay two sources for the same
-  email.
-- **Net-new only.** Dedupe against Nous before saving.
-- **Never fabricate an email.** Unverifiable leads are flagged, not guessed.
+- **Shape the prompt first.** Never run on a vague brief — Phase 1 is not
+  optional.
+- **Cost and approval before any spend.** Phase 2 shows the estimate and waits
+  for a yes.
+- **Dedup before enrich.** Run `/v2/dedup` on the domains; enrich only `net_new`.
+- **Never guess an email.** Unverifiable contacts are flagged, not invented.
+- **Name the list from the ICP** and tell the user where to find it.
 
 ## Customize / Set up
 
-- **Set the target count** and the geography.
-- **Order the waterfall** — which finder runs first, which is the fallback.
-- **Tune the match** — lean on the examples for a lookalike, or on the
-  description for a broad ICP.
-- **Name the list** and choose whether to hand it to `campaign-writer` or export
-  it to your sequencer.
+- **Set the target count, geography, and buyer titles.**
+- **Lookalike vs description** — give example domains for the sharpest match, or
+  `icp_text` for a broad ICP.
+- **Match rate vs cost** — Apollo-only is cheapest; add FullEnrich to lift the
+  email rate, MillionVerifier to protect deliverability.
+- **Rename the default list** if you want.
 
 ## Frequently asked questions
 
-**Description or examples — which works better?**
-Both. A description gives a broad, precise ICP; examples find lookalikes of
-companies you already know convert. Give both and it uses the examples to
-sharpen the description.
+**Why DiscoLike and not just Apollo for the lookalike?**
+Apollo can only match firmographics. DiscoLike matches what a company actually
+does, from its website — so "similar to X" finds companies in the same business,
+not just the same size band.
 
 **What does a run cost?**
-Roughly one enrichment credit per lead, less when the first source hits and the
-waterfall doesn't fire. The skill shows the estimate and confirms before
-spending — you always see the number first.
+Discovery is cheap (~$3 per 1,000 companies). The cost is the email enrichment,
+~$0.05 per found email, charge-on-found. The dedup keeps you from paying it
+twice on companies you already have. Phase 2 always shows the estimate first.
 
-**What about leads with no findable email?**
-They're flagged `unverified` and set aside, never guessed. You can still keep
-them for LinkedIn-only outreach.
+**Do I have to wait in the terminal?**
+No. Phase 3 starts the run and hands you back — the leads stream into the Nous
+list as they verify.
