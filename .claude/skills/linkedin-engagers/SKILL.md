@@ -321,15 +321,21 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
   -d '{ "name": "<LIST_NAME>", "source": "linkedin_engagers" }'
 # → { "lead_list": { "id": "<LIST_ID>", "workspace_id": "<WS>", ... } }
 
-# Declare the icp columns so the list filters ICP vs non-ICP in the Nous UI.
+# Declare a MINIMAL column set. Keep it clean: Position, ICP (the score, labelled
+# just "ICP"), Source, and Engaged. The `icp` boolean and `icp_reason` still go in
+# `fields` (they power the All/ICP/Non-ICP filter and stay on the record) but are
+# NOT shown as columns. Name, Email, Company and LinkedIn are fixed columns.
 # This PATCH REQUIRES workspaceId in the body — use the <WS> above.
 curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "workspaceId": "<WS>", "columns": [
-        {"key":"title","label":"Title"}, {"key":"company","label":"Company"},
-        {"key":"icp","label":"ICP"}, {"key":"icp_score","label":"ICP score"},
-        {"key":"icp_reason","label":"Why"}, {"key":"creator","label":"From creator"} ] }'
+        {"key":"title","label":"Position"}, {"key":"icp_score","label":"ICP"},
+        {"key":"source","label":"Source"}, {"key":"source_type","label":"Engaged"} ] }'
 ```
+
+The list filters ICP vs non-ICP from the `fields.icp` boolean, and the **ICP**
+column (the 0–100 score) is **click-to-sort** in the UI. Anyone above the ICP
+threshold (≈40) is an ICP lead.
 
 ### 10. Bulk-add ALL net-new engagers, ICP-tagged (keep both)
 
