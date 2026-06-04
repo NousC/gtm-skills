@@ -45,8 +45,10 @@ keeps it account-safe and GDPR-clean). No Sales Nav → point them to
 lead (no email), 1 more only when an email is found** (misses are free). From
 $9/mo.
 
-**3. Nous — exclude, dedup, score, and where the list lands (required).** Check
-`NOUS_API_KEY` (`pk_`). It runs the free middle stage and saves the list.
+**3. Nous — the ICP, dedup, and where the list lands (required).** Check
+`NOUS_API_KEY` (`pk_`), and connect the MCP for `get_gtm_profile`. Nous holds the
+**ICP / GTM context** the skill scores against, dedups the leads, and stores the
+list. The scoring itself runs in the skill (your Claude tokens), not on Nous.
 
 ---
 
@@ -140,22 +142,46 @@ Evaboot** with email-finding **off**, then hands you the leads-only file.
 Either way you get, per lead: `name`, `title`, `company`, `company_domain`,
 `linkedin_url` — **no email yet**. Cost: 1 credit per lead.
 
-## Phase 3.5 — Filter and score in Nous (free, before any email spend)
+## Phase 3.5 — Filter and score against the ICP (no Evaboot or Nous credits)
 
-Do all three before spending a single email credit:
+This whole stage runs **inside the skill** — you (Claude) read the workspace's
+ICP and reason over every lead. It spends **no Evaboot credits and no Nous
+credits**; the only cost is the operator's own Claude tokens. That is by design:
+**Nous holds the ICP, the skill does the reasoning.** We never burn Nous credits
+scoring thousands of leads. (See "How ICP scoring works" below.)
 
-### 1. Exclude the wrong company types (deterministic, by company identity)
+Do all three before spending a single email credit.
 
-Drop leads whose **company name or description** matches the exclusion list.
+### 1. Pull the full ICP from the Nous GTM context (the source of truth)
+
+The exclusion list is a fast first pass, but the **real** judge is the
+workspace's own ICP model — already built and maintained in the GTM context.
+Fetch it first, and use the *whole* thing (who we target, the firmographics, the
+signals/vocabulary, the disqualifiers):
+
+```bash
+# the GTM profile / ICP — same data as the get_gtm_profile MCP tool
+curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
+  -H "Authorization: Bearer $NOUS_API_KEY"
+```
+
+If the Nous MCP is connected, prefer the `get_gtm_profile` tool — it returns the
+ICP scorecard and context directly. **This profile is what makes scoring
+reliable for company types the exclusion list never anticipated** (see step 3).
+
+### 2. Exclude the obvious wrong company types (fast deterministic pass)
+
+Drop leads whose **company name or description** centres on a non-ICP business.
 Match on the company's *identity*, not a stray profile mention, so a real GTM
-agency that says "marketing" once isn't nuked.
+agency that says "marketing" once isn't nuked. This default list is **editable**
+— it is a convenience, not the source of truth:
 
 > design · web design · web development · website · graphic · UX/UI · SEO ·
 > search engine · branding · logo · creative · recruiting · staffing ·
 > recruitment · talent · headhunting · executive search · word of mouth ·
 > PR · public relations · social media management · digital marketing
 
-### 2. Dedup by domain — Nous (free)
+### 3. Dedup by domain — Nous (free)
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
@@ -166,12 +192,21 @@ curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
 Keep `status === 'net_new'` — no point paying for emails on leads already in the
 pipeline.
 
-### 3. ICP-score every surviving lead (Claude, against the saved ICP)
+### 4. ICP-score every surviving lead against the GTM profile
 
-Fetch the ICP/Market facts (the call above), then score each lead against them.
-For each lead, decide `icp: true | false` and an `icp_score` 0–100. This is your
-reasoning step — match the lead's company, role, size, and signals to the saved
-ICP. Only `icp: true` leads proceed to Stage 3 emails.
+For each remaining lead, judge its **company** against the ICP you pulled in step
+1 and write three values into the lead's `fields`:
+
+- `icp`: `true | false` — does this company match the ICP?
+- `icp_score`: `0–100` — how strong the fit is.
+- `icp_reason`: one short sentence — *why*, citing what matched or missed.
+
+Score against the **positive ICP definition**, not just the blocklist. A company
+that isn't on the exclusion list but clearly isn't a GTM agency (say an event
+agency, a tax firm) still scores low because it doesn't match the profile. That
+is the reliability: **the blocklist catches the known junk, the ICP profile
+catches everything else.** Only `icp: true` leads proceed to Stage 3 emails;
+`icp: false` leads are kept in the list, labelled with their score and reason.
 
 ## Phase 4 — Find emails on keepers, save the ICP-segmented list
 
@@ -204,7 +239,8 @@ curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "columns": [ {"key":"title","label":"Title"},
                      {"key":"icp","label":"ICP"},
-                     {"key":"icp_score","label":"ICP score"} ] }'
+                     {"key":"icp_score","label":"ICP score"},
+                     {"key":"icp_reason","label":"Why"} ] }'
 
 # 3. insert every surviving net-new lead (email only on the ICP-qualified ones)
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
@@ -213,18 +249,48 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
         { "name":"Jane Doe", "email":"jane@acme.com",
           "linkedin_url":"https://www.linkedin.com/in/janedoe", "company":"Acme",
           "fields": { "title":"Founder", "icp": true, "icp_score": 86,
+                      "icp_reason":"AI-native GTM agency on Clay, 1–10, US — core ICP",
                       "source":"sales_nav", "enriched_by":"evaboot" } },
         { "name":"Bob Legacy", "company":"OldSEO Co",
           "linkedin_url":"https://www.linkedin.com/in/boblegacy",
           "fields": { "title":"Owner", "icp": false, "icp_score": 22,
+                      "icp_reason":"SEO/web-design shop, not a GTM agency",
                       "source":"sales_nav" } } ] }'
 ```
 
 The list is now filterable **ICP vs non-ICP** — you see the qualified core with
-emails, and the rest you also pulled, leads-only, without losing them. That keeps
-the ICP definition inspectable and tightenable against real pulled data.
+emails, and the rest you also pulled, leads-only, with a score and a reason,
+without losing them. In the Nous list the operator can review the non-ICP rows
+and **delete** any that are truly junk, or keep one that was misjudged. That
+keeps the ICP definition inspectable and tightenable against real pulled data.
 
 Then point the user at `campaign-writer` for the ICP-qualified segment.
+
+## How ICP scoring works (and who pays) — read this
+
+Full transparency on the mechanism, because it is the heart of the skill:
+
+1. **The ICP lives in Nous, in the GTM context.** Nous already holds the full
+   ICP model — firmographics, target signals, vocabulary, disqualifiers — built
+   and maintained on the GTM Context page. The skill does **not** invent an ICP;
+   it reads yours (`get_gtm_profile` / `GET /v2/workspace/facts?categories=ICP,Market`).
+2. **The skill (Claude) does the reasoning.** Scoring each lead against that ICP
+   is an LLM judgment, and it runs **in the skill, on the operator's own Claude
+   tokens.** Nous is never asked to score thousands of leads, so **we never burn
+   Nous credits on it.** The split is deliberate: *Nous stores the ICP, the skill
+   reasons with it.*
+3. **Reliability comes from the positive ICP, not the blocklist.** The exclusion
+   list is a fast first pass for known junk (SEO, design, recruiting shops). Every
+   other company is judged against the *positive* ICP definition, so a company
+   type nobody listed still gets a correct low score when it doesn't fit. The
+   blocklist handles the obvious; the ICP profile handles the unknown.
+4. **Nothing is deleted automatically — it is a control step.** Every lead is
+   kept and labelled `icp` / `icp_score` / `icp_reason`. The operator reviews in
+   the Nous list, filters ICP vs non-ICP, and deletes rows by hand. A misjudged
+   lead is never lost; a confirmed-junk lead can be removed.
+
+This same logic applies to **any bulk set** the skill scores — it reads the GTM
+profile once, then scores the whole batch against it before any email spend.
 
 ## Hard rules — never break these
 
@@ -236,8 +302,11 @@ Then point the user at `campaign-writer` for the ICP-qualified segment.
 - **Warn at the 2,500 export cap.** Tighten below it for a complete pull.
 - **Extract leads-only first.** Emails are Stage 3, on keepers only — never pay
   to find emails on junk types or duplicates.
-- **Keep non-ICP leads, labelled.** Score and tag, never delete — the list stays
-  filterable and the ICP stays inspectable.
+- **Score against the GTM profile, not a guess.** Pull the ICP from Nous first
+  (`get_gtm_profile`); the blocklist is only a first pass.
+- **The skill never auto-deletes.** It keeps and labels every lead (`icp` /
+  `icp_score` / `icp_reason`); deletion is the operator's manual control step in
+  the Nous list, so a misjudged lead is never lost.
 
 ## Customize / Set up
 
