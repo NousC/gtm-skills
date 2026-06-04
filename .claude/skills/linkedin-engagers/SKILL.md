@@ -173,18 +173,28 @@ remaining                        → cap at 8 (MAX_MINES_PER_RUN)
 
 Two paid runs per post. Run them in parallel where possible.
 
+**`profileScraperMode` decides whether you can find emails.** Set it on every
+comments/reactions call:
+- **`"main"`** — visits each profile and returns **vanity URLs** (`/in/spencerparikh`)
+  plus richer profile data. **Required if you'll enrich emails** — Prospeo and
+  most finders reject the encoded `/in/ACoAA…` URLs that `"short"` returns. Costs
+  more (a profile visit per engager) and runs slower, but it's what makes the
+  email step work. Verified: with `"main"`, ~100% of people came back as vanity.
+- **`"short"`** (default) — cheaper/faster, encoded URLs. Fine for a leads-only
+  list with no email enrichment.
+
 ```bash
-# Commenters — param is `posts`, NOT `postUrls`
+# Commenters — param is `posts`, NOT `postUrls`. profileScraperMode "main" for emails.
 curl -s -X POST \
   "https://api.apify.com/v2/acts/harvestapi~linkedin-post-comments/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "posts": ["<POST_URL>"], "maxItems": 100 }'
+  -d '{ "posts": ["<POST_URL>"], "maxItems": 100, "profileScraperMode": "main" }'
 
 # Reactors
 curl -s -X POST \
   "https://api.apify.com/v2/acts/harvestapi~linkedin-post-reactions/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "posts": ["<POST_URL>"], "maxItems": 100 }'
+  -d '{ "posts": ["<POST_URL>"], "maxItems": 100, "profileScraperMode": "main" }'
 ```
 
 ### 6. Normalize the response — profile is under `actor`
@@ -209,6 +219,10 @@ Acme"); parse it out if you can, but treat it as unreliable. Flatten it:
 
 `source_type` is determined by **which actor returned the row**, not a field
 on the row. There is no flat `engagementType` field.
+
+**Keep only people.** Company accounts also react, so they show up with a
+`/company/` URL. Drop any row whose `linkedin_url` isn't a `/in/` profile — they
+can't be a lead or be enriched. (In a real run ~8 of 358 rows were company pages.)
 
 ### 7. Dedupe within this run, normalizing URLs
 
@@ -491,6 +505,10 @@ Pushed to <outbound>: <pushed> (skipped <push_skipped>)
 - **Email finding is OPTIONAL and keepers-only.** No provider key → skip it, save
   leads-only. Never derive an email from the unreliable scraped company; use the
   profile URL. Never enrich the off-ICP or dupes.
+- **Emails require `profileScraperMode: "main"`.** The default `"short"` returns
+  encoded URLs that finders reject. If the operator wants emails, scrape in
+  `"main"` (vanity URLs); if leads-only, `"short"` is fine and cheaper. Keep only
+  `/in/` people; throttle the finder (~3s) and back off on rate-limit (400/429).
 - **Stamp the lead source.** Highly recommended: set `fields.source` on every
   lead to this skill's name — `"High-intent LinkedIn scraper"`. It's how you
   later compare reply rates across lead sources (this skill vs Apollo vs inbound
@@ -519,19 +537,21 @@ reruns safe.
 17 paid runs (1 post-search + 8 × 2 engager pulls), roughly $3.40, or about
 $2.50 per 300 leads on HarvestAPI pricing at time of writing.
 
-**Can I get richer profile data for a better pre-score?**
-By default the scraper returns only name / linkedinUrl / position / comment text.
-HarvestAPI has an optional **Profile Scraper Mode** that visits each profile for
-more fields (and clean URLs) at extra Apify cost. Usually it's cheaper to keep
-the pre-score coarse and let the **enrichment** step resolve the real company and
-firmographics, since you're paying to enrich the keepers anyway.
+**Short vs main Profile Scraper Mode — which do I use?**
+`"short"` (default) is cheap and fast but returns **encoded** URLs that finders
+reject — use it only for a leads-only list. `"main"` visits each profile, costs
+more and runs slower, but returns **vanity URLs** (and richer data) — **required
+if you want emails.** Verified: `"main"` returned ~100% vanity URLs; `"short"`
+left ~70% encoded and un-enrichable.
 
 **What does a lead with a verified email cost?**
-Two parts: the Apify scrape is **~$0.008 per engager** (~$2.50 / 300), and the
-email find is **~$0.05 per email found** (Prospeo / FullEnrich, charge-on-found),
-run only on the pre-qualified people. So a finished **lead with a verified email
-is ~$0.05–0.06**. The email step is optional — without a provider key the list is
-leads-only and you only pay the Apify scrape.
+With `profileScraperMode: "main"` (needed for emails) the **scrape** costs more
+than the cheap `"short"` pull because it visits every profile — budget a few
+dollars per creator. The **email find** is **~$0.02 per email found** on Prospeo
+(1 credit, charge-on-found; misses are free), run only on the ICP-qualified. So
+the marginal cost of a verified-email lead is ~$0.02 plus the heavier scrape. The
+email step is optional — `"short"` + no provider key gives a leads-only list for
+the cheap scrape alone.
 
 **How does the ICP scoring work?**
 The skill reads your full GTM profile from Nous and scores each engager — `icp`
