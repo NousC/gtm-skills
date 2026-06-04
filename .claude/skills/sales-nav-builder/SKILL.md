@@ -189,16 +189,24 @@ Charged 1 credit per email **found** (misses are free). Hit rate runs ~60–80%.
 
 ### Save the list — every lead tagged, non-ICP kept
 
-Create the list with an `icp` column, then insert **all** surviving net-new
-leads. ICP-qualified leads carry their found email; non-ICP leads are saved
-**leads-only, no email spend**, flagged for visibility:
+Create the list, declare the `icp` columns so they show and filter in the Nous
+UI, then insert **all** surviving net-new leads. ICP-qualified leads carry their
+found email; non-ICP leads are saved **leads-only, no email spend**, flagged:
 
 ```bash
+# 1. create the list (returns { lead_list: { id } })
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "name": "Founder · GTM agencies · 1–10 · US", "source": "sales_nav",
-        "columns": ["title","icp","icp_score","source"] }'
+  -d '{ "name": "Founder · GTM agencies · 1–10 · US", "source": "sales_nav" }'
 
+# 2. declare the display columns (icp + icp_score → filterable ICP vs non-ICP)
+curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "columns": [ {"key":"title","label":"Title"},
+                     {"key":"icp","label":"ICP"},
+                     {"key":"icp_score","label":"ICP score"} ] }'
+
+# 3. insert every surviving net-new lead (email only on the ICP-qualified ones)
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "leads": [
