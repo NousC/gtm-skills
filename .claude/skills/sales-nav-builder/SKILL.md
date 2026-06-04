@@ -136,8 +136,8 @@ curl -s -X POST "https://api.evaboot.com/v1/email-finder/" \
 ```
 
 Returns the work email with a verification status; keep the verified ones.
-(Evaboot also publishes an MCP server — if it's connected, the agent can call
-extraction/email-finding as MCP tools instead of curl. Prefer that when present.)
+Evaboot is API + extension only (no MCP) — the extension does the Sales Nav
+extraction, this endpoint does the emails.
 
 ### 2. Dedup by domain — Nous (free)
 

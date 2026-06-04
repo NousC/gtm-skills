@@ -35,10 +35,12 @@ employees, US, like anna-agency.com."*
 Detect what's connected, ask only for what's missing, one thing at a time.
 
 **1. Apollo — the people + email (required).** Check for `APOLLO_API_KEY`.
-Missing → "I find the decision maker at each company through Apollo. Its people
-search is free per call (no credits); you only pay to reveal emails. Use a
-**master API key** — note that needs a paid Apollo plan, which is what unlocks
-API access. `export APOLLO_API_KEY=...` (apollo.io → Settings → API)."
+Missing → "I find the decision maker at each company through Apollo. The people
+search costs no per-call credits, but Apollo's API is **only on a paid plan**
+(from ~$59/mo; full programmatic access sits on the higher tiers), so that
+subscription is the real floor — it is not free. You only pay *extra* to reveal
+emails. Use a **master API key**. `export APOLLO_API_KEY=...` (apollo.io →
+Settings → API)."
 
 **2. Nous — dedup + where the list lands (required).** Check `NOUS_API_KEY`.
 Missing → "`export NOUS_API_KEY=pk_xxx` (opennous.cloud → Settings → API keys).
@@ -109,8 +111,8 @@ curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
 
 ## Phase 2 — Confirm the spec and a rough cost, then wait
 
-Show the spec back, preview the real volume with a free Apollo count call, and
-lay out the rough cost. **Wait for an explicit yes** before revealing a single
+Show the spec back, preview the real volume with an Apollo count call, and lay
+out the rough cost. **Wait for an explicit yes** before revealing a single
 email.
 
 ```
@@ -124,12 +126,14 @@ Targeting I'll run:
 Apollo preview: ~4,800 people match. After dedup against your Nous pipeline,
 ~3,500 net-new. Expected ~2,800 verified emails.
 
-Rough cost: people search is free; ~$140 email reveal + ~$1 verify  ≈  $141.
+Rough cost: people search adds no per-call cost (paid Apollo plan is the
+floor); ~$140 email reveal + ~$1 verify  ≈  $141 in usage.
 Run it?
 ```
 
-Estimate: Apollo people search is free per call; email ≈ net-new founders ×
-match-rate × ~$0.05 (FullEnrich, charge-on-found); verify is rounding error.
+Estimate: a paid Apollo plan (~$59/mo+) is the floor that unlocks the API; the
+people search then adds no per-call cost; email ≈ net-new founders × match-rate
+× ~$0.05 (FullEnrich, charge-on-found); verify is rounding error.
 
 ## Phase 3 — Run, save to Nous, report back
 
@@ -146,9 +150,10 @@ wait in the terminal:
 
 ## The pipeline (the real calls)
 
-### 1. Find the people — Apollo people search (free, no credits)
+### 1. Find the people — Apollo people search (no per-call credits; paid plan required)
 
-Run the spec as a people search. This consumes **no credits** — it returns
+Run the spec as a people search. This consumes **no per-call credits** (though
+Apollo's API needs a paid plan) — it returns
 obfuscated identity (`id`, `first_name`, `last_name_obfuscated`, `title`, org
 name, `has_email`). Run **several keyword variants** and union the results — one
 query never covers the whole category.
@@ -252,14 +257,16 @@ a people search for the same profile. Claude does the similarity reasoning, so
 you don't need a lookalike vendor.
 
 **Why no Sales Navigator or DiscoLike here?**
-This skill is the no-Sales-Nav, no-extra-subscription path — Apollo's people
-search is free per call and Claude's targeting replaces a similarity vendor. If
-you have Sales Navigator and want the sharpest possible targeting, use
+This is the no-Sales-Nav path — its one platform subscription is Apollo (not
+Sales Nav), and Claude's targeting replaces a similarity vendor like DiscoLike.
+If you have Sales Navigator and want the sharpest possible targeting, use
 `sales-nav-builder` instead.
 
 **What does a run cost?**
-The people search is free. You pay only to reveal emails — ~$0.05 per found
-email, charge-on-found — plus a paid Apollo plan for API access. The Nous dedup
+A paid Apollo plan (from ~$59/mo) is the floor — it unlocks the API and the
+people search, which then adds no per-call cost. On top of that you pay only to
+reveal emails — ~$0.05 per found email, charge-on-found. So ~$0.05 per verified
+lead in usage, on top of the Apollo subscription. The Nous dedup
 keeps you from paying that reveal twice. Phase 2 always shows the estimate first.
 
 **Do I have to wait in the terminal?**
