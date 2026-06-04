@@ -168,7 +168,7 @@ holds the values.
 - Create or reuse a **"Hiring signals" lead list** (`POST /api/lead-lists`), and
   set its columns once (`PATCH /api/lead-lists/:id` with `columns`):
   `hiring_role`, `hiring_date`, `hiring_count`, `job_url`, `icp_score`,
-  `signal_strength`, `signal_source`.
+  `signal_strength`, `signal_source`, `source`.
 - Insert the decision maker (`POST /api/lead-lists/:id/leads`) — identity in the
   normal columns, the hiring context in `fields`:
 
@@ -177,7 +177,8 @@ holds the values.
   "linkedin_url": "https://www.linkedin.com/in/janedoe", "company": "Acme",
   "fields": { "hiring_role": "SDR", "hiring_date": "2026-05-30",
               "hiring_count": 2, "job_url": "https://...", "icp_score": 82,
-              "signal_strength": 9, "signal_source": "theirstack" } }
+              "signal_strength": 9, "signal_source": "theirstack",
+              "source": "Hiring signals" } }
 ```
 
 Workspace-wide dedup on email / linkedin_url runs automatically. Also record the
@@ -211,6 +212,9 @@ the list to the `campaign-writer` skill** for the full data-driven campaign
 - **Net-new and on-ICP only.** Score and dedupe before anything is saved.
 - **Record the signal.** A company isn't done until the hiring trigger is on its
   Nous record — that's the whole point.
+- **Stamp the lead source.** Highly recommended: set `fields.source` to
+  `"Hiring signals"` on every lead (distinct from `signal_source`, the provider),
+  so reply rates can be compared across lead sources later.
 - **Lead with the trigger.** Every sequence opens on the hire; never a generic
   cold open.
 
