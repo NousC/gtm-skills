@@ -264,6 +264,11 @@ Only `icp_pre: true` engagers go to enrichment (step 8.5). The `false` ones are
 **kept, leads-only, labelled** — never dropped. If no GTM profile is set, mark
 `icp_pre: null`, keep everyone, and tell the operator to fill in GTM Context.
 
+**Set expectations:** on a well-matched creator, **roughly 30–45% of the audience
+typically pre-scores as ICP** (in test runs on GTM creators it was ~40%). Tell
+the operator that number up front so a 60% "non-ICP" split reads as normal
+filtering, not a broken run.
+
 ### 8.5. Find emails on the pre-qualified — by LinkedIn URL  *(OPTIONAL STEP)*
 
 **This step is optional.** With no email-provider key set, **skip it entirely**
