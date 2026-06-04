@@ -222,11 +222,15 @@ Group rows by `normalizeLinkedInUrl(linkedin_url)`. If the same person both
 commented and reacted, **comment wins** (stronger signal). Keep both
 engagements in a `signals: []` array for step 11.
 
-### 8. Score each engager against your ICP
+### 8. Pre-score against your ICP (the cheap gate)
 
-Read your **full** GTM profile from Nous, then score every deduped engager
-against it. Same ICP model `sales-nav-builder` uses; it runs in the skill on
-your Claude tokens — Nous holds the ICP, the skill reasons with it.
+Read your **full** GTM profile, then give every deduped engager a **pre-score**.
+This is deliberately coarse — all you have so far is the **headline/title**, any
+**company named in the headline**, and the **engagement signal** (they showed up
+for this creator's topic). You're missing employee size, what the company
+actually does, and industry, so don't over-trust it. Its only job is to **gate
+the paid enrichment**: keep anyone plausibly on-ICP, set the clearly-off ones
+aside (labelled, never dropped).
 
 ```bash
 # Your GTM profile / ICP — same data as the get_gtm_profile MCP tool
@@ -234,29 +238,26 @@ curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market,Pro
   -H "Authorization: Bearer $NOUS_API_KEY"
 ```
 
-For each engager, write three values into its `fields` and **keep it regardless**:
+Write into each engager's `fields`:
+- `icp_pre`: `true | false` — plausibly on-ICP from the profile alone?
+- `icp_reason`: one short sentence.
 
-- `icp`: `true | false` — does this person match the ICP?
-- `icp_score`: `0–100` — how strong the fit is.
-- `icp_reason`: one short sentence — why, citing what matched or missed.
+Only `icp_pre: true` engagers go to enrichment (step 8.5). The `false` ones are
+**kept, leads-only, labelled** — never dropped. If no GTM profile is set, mark
+`icp_pre: null`, keep everyone, and tell the operator to fill in GTM Context.
 
-Judge on what you actually have: the **headline/title**, any **company named in
-the headline**, and the **engagement signal itself** — they showed up for this
-creator's topic, which is its own ICP cue. **Don't drop the non-ICP ones** — they
-stay in the list, labelled, leads-only (no email spend). Only `icp: true`
-engagers go on to email enrichment (step 8.5), so the variable cost lands only on
-the people you'd actually contact.
+### 8.5. Find emails on the pre-qualified — by LinkedIn URL  *(OPTIONAL STEP)*
 
-If no GTM profile is set, mark `icp: null` and `icp_reason: "no ICP set"`, keep
-everyone, and tell the operator to fill in GTM Context. Never invent a score.
-
-### 8.5. Find emails on the ICP-qualified — by LinkedIn URL (this fixes the email gap)
+**This step is optional.** With no email-provider key set, **skip it entirely**
+and save the list leads-only (LinkedIn URL + the pre-score) — the skill still
+works. Tell the operator they can add `PROSPEO_API_KEY` (or `FULLENRICH_API_KEY`)
+to turn on emails.
 
 You have a reliable **profile URL** but the scraped `company` is usually wrong,
 so deriving a domain to find an email fails. **Skip the company guess entirely:**
 feed the LinkedIn URL straight to a LinkedIn-native finder, which returns the
 verified work email **and** the real company + domain. Do this **only for
-`icp: true` net-new engagers** — never pay to enrich non-ICP or duplicates.
+`icp_pre: true` net-new engagers** — never pay to enrich the off-ICP or dupes.
 
 ```bash
 # Prospeo — LinkedIn URL → verified work email (synchronous, one call)
@@ -268,9 +269,24 @@ curl -s -X POST "https://api.prospeo.io/linkedin-email-finder" \
 ```
 
 Returns the work `email` plus the resolved `company`, `domain`, and `position`.
-Write the verified email and clean company back onto the lead (overwriting the
-unreliable scraped company). No key set → skip enrichment, save leads-only, and
-tell the operator they can add `PROSPEO_API_KEY` to get emails.
+Write the email and the **real company + domain** back onto the lead, overwriting
+the unreliable scraped company. Cost: ~$0.05 per email found (charge-on-found).
+
+### 8.6. Re-score with the real company — the authoritative ICP score
+
+Now you actually have the firmographics, so do the **real** ICP score. Take the
+resolved **domain / company / title**, and pull the firmographics the pre-score
+was missing — **employee size, industry, what the company does** — either from
+the enrichment response, a domain lookup (e.g. Apollo org enrichment), or by
+reading the company site. Re-judge against the GTM profile and write the final:
+
+- `icp`: `true | false`
+- `icp_score`: `0–100`
+- `icp_reason`: one sentence, now citing the real size/industry/what-they-do.
+
+This `icp` is the authoritative tag the list filters on. (If you skipped
+enrichment in 8.5, carry `icp_pre` forward as `icp` and note the score is
+profile-only.)
 
 ### 9. Create the Nous lead list
 
@@ -428,8 +444,12 @@ Pushed to <outbound>: <pushed> (skipped <push_skipped>)
 - **Score honestly, keep both.** Judge ICP fit only on the fields you have, write
   `icp` / `icp_score` / `icp_reason`, and keep the non-ICP ones labelled — never
   silently drop them. Mark `icp: null` when there's no GTM profile.
-- **Emails on ICP keepers only, by LinkedIn URL.** Never derive an email from the
-  unreliable scraped company; use the profile URL. Never enrich non-ICP or dupes.
+- **Pre-score gates the spend; re-score after enrichment is authoritative.** The
+  profile pre-score only decides who gets enriched; the real `icp` score happens
+  once you have the domain + firmographics.
+- **Email finding is OPTIONAL and keepers-only.** No provider key → skip it, save
+  leads-only. Never derive an email from the unreliable scraped company; use the
+  profile URL. Never enrich the off-ICP or dupes.
 - **State after success, never before.** A failed mid-flight call must leave
   the post NOT marked mined, so the next run retries it.
 - **Observations for everyone.** Even leads skipped as duplicates get their
@@ -453,6 +473,13 @@ reruns safe.
 **What's the worst-case Apify spend for one creator?**
 17 paid runs (1 post-search + 8 × 2 engager pulls), roughly $3.40, or about
 $2.50 per 300 leads on HarvestAPI pricing at time of writing.
+
+**What does a lead with a verified email cost?**
+Two parts: the Apify scrape is **~$0.008 per engager** (~$2.50 / 300), and the
+email find is **~$0.05 per email found** (Prospeo / FullEnrich, charge-on-found),
+run only on the pre-qualified people. So a finished **lead with a verified email
+is ~$0.05–0.06**. The email step is optional — without a provider key the list is
+leads-only and you only pay the Apify scrape.
 
 **How does the ICP scoring work?**
 The skill reads your full GTM profile from Nous and scores each engager — `icp`
