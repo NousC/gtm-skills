@@ -243,6 +243,13 @@ You are **missing employee size, industry, and what the company does** — so do
 over-trust the pre-score. Its only job is to **gate the paid enrichment**: keep
 anyone plausibly on-ICP, set the clearly-off ones aside (labelled, never dropped).
 
+**Calibration (from real runs):** count GTM / RevOps / demand-gen / sales-ops
+**leaders** as on-ICP, not just the literal "GTM engineer" or "founder" titles —
+the buyer includes the people who *run* GTM, not only the ones who build it.
+"Head of Growth & GTM", "Demand Gen Director", "RevOps Architect", "GTM
+Consultant" are in. Lean inclusive at the gate; the post-enrichment re-score
+(step 8.6) tightens it once you have the firmographics.
+
 ```bash
 # Your GTM profile / ICP — same data as the get_gtm_profile MCP tool
 curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market,Product,Pricing,Competitors" \
