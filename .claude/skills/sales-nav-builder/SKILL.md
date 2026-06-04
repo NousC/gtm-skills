@@ -108,27 +108,36 @@ On a yes, run Evaboot on the search, dedup, and save the list:
 
 ## The pipeline (the real calls)
 
-### 1. Extract + find email + verify — Evaboot
+Evaboot splits into two jobs: the **Chrome extension** extracts the leads out of
+your Sales Nav search, and the **API** finds + verifies the emails. The skill
+uses both.
 
-Hand Evaboot the Sales Nav search URL; it extracts the leads and finds plus
-verifies the work emails in one pass (1 credit to export a lead, 1 more for a
-found + verified email).
+### 1a. Extract the leads — Evaboot Chrome extension (you, once per search)
+
+Sales Nav won't export, and Evaboot's *extraction* lives in its extension, not
+the API. So: run the search in Sales Nav → click **Export with Evaboot** → it
+cleans the list. Turn email-finding **on** in the export and it returns the
+finished file in one pass; leave it off to export leads-only and let the API do
+emails in 1b. Hand this skill the resulting CSV (name, title, company, domain,
+LinkedIn URL, and — if enabled — a verified email).
+
+### 1b. Find + verify the emails — Evaboot API (only if the CSV has no emails)
+
+For a leads-only export, find and verify each email through the confirmed API
+endpoint (1 credit per email found + verified; Bearer token from the dashboard →
+Integrations → API):
 
 ```bash
-# Create an export from the Sales Nav search URL
-curl -s -X POST "https://api.evaboot.com/v1/exports" \
+curl -s -X POST "https://api.evaboot.com/v1/email-finder/" \
   -H "Authorization: Bearer $EVABOOT_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "search_url": "<sales_nav_search_url>", "find_emails": true, "verify": true }'
-# → { "export_id": "<id>" }  then poll until ready:
-curl -s "https://api.evaboot.com/v1/exports/<id>" \
-  -H "Authorization: Bearer $EVABOOT_API_KEY"
+  -d '{ "prospects": [
+        { "first_name":"Jane","last_name":"Doe",
+          "company_name":"Acme","domain":"acme.com" } ] }'
 ```
 
-Returns per lead: `name`, `title`, `company`, `company_domain`,
-`linkedin_url`, and `email` with a verification status. Keep the verified ones.
-(No Sales Nav URL handy? The user can run the search in Sales Nav and export it
-in the Evaboot extension; then point this skill at the resulting CSV — same
-ingest.)
+Returns the work email with a verification status; keep the verified ones.
+(Evaboot also publishes an MCP server — if it's connected, the agent can call
+extraction/email-finding as MCP tools instead of curl. Prefer that when present.)
 
 ### 2. Dedup by domain — Nous (free)
 
