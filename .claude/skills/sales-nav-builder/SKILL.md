@@ -229,20 +229,25 @@ UI, then insert **all** surviving net-new leads. ICP-qualified leads carry their
 found email; non-ICP leads are saved **leads-only, no email spend**, flagged:
 
 ```bash
-# 1. create the list (returns { lead_list: { id } })
+# 1. create the list — the response carries BOTH the id AND the workspace_id:
+#    { "lead_list": { "id": "<LIST_ID>", "workspace_id": "<WS>", ... } }
+#    Capture both. The API key alone authorizes this (no workspaceId in body).
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "name": "Founder · GTM agencies · 1–10 · US", "source": "sales_nav" }'
 
-# 2. declare the display columns (icp + icp_score → filterable ICP vs non-ICP)
+# 2. declare the display columns (icp + icp_score → filterable ICP vs non-ICP).
+#    This PATCH REQUIRES workspaceId in the body — use the <WS> from step 1.
 curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "columns": [ {"key":"title","label":"Title"},
+  -d '{ "workspaceId": "<WS>",
+        "columns": [ {"key":"title","label":"Title"},
                      {"key":"icp","label":"ICP"},
                      {"key":"icp_score","label":"ICP score"},
                      {"key":"icp_reason","label":"Why"} ] }'
 
-# 3. insert every surviving net-new lead (email only on the ICP-qualified ones)
+# 3. insert every surviving net-new lead (email only on the ICP-qualified ones).
+#    The API key authorizes this — no workspaceId needed in the body.
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "leads": [
@@ -264,7 +269,10 @@ without losing them. In the Nous list the operator can review the non-ICP rows
 and **delete** any that are truly junk, or keep one that was misjudged. That
 keeps the ICP definition inspectable and tightenable against real pulled data.
 
-Then point the user at `campaign-writer` for the ICP-qualified segment.
+**Expect a short delay.** Leads land immediately, but Nous resolves them in the
+background, so names and the `icp` tags fill in **a few seconds (~10s) after the
+insert** — tell the operator the list will populate shortly, don't report it as
+empty. Then point the user at `campaign-writer` for the ICP-qualified segment.
 
 ## How ICP scoring works (and who pays) — read this
 
