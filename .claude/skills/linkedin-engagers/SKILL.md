@@ -189,17 +189,21 @@ curl -s -X POST \
 
 ### 6. Normalize the response — profile is under `actor`
 
-Every engager row has a nested `actor` object. Flatten it:
+Every engager row has a nested `actor` object. **This is ALL the scraper gives
+you per person — name, linkedinUrl, position (a role string), picture. There is
+no clean `company`, no employee size, no industry, no location, no headline.**
+The company, when present, is embedded in the `position` text (e.g. "Founder at
+Acme"); parse it out if you can, but treat it as unreliable. Flatten it:
 
 ```js
 {
-  linkedin_url: row.actor.linkedinUrl ?? row.profileUrl ?? row.linkedinUrl,
-  name:        row.actor.name        ?? row.fullName,
-  title:       row.actor.position    ?? row.actor.headline ?? row.position ?? row.headline,
-  company:     row.actor.company     ?? row.company,
-  source_type: <"comment" | "reaction">,   // from WHICH actor returned the row
-  comment_text: row.commentText,            // only for comments
-  reaction_type: row.reactionType,          // only for reactions
+  linkedin_url: row.actor.linkedinUrl,          // encoded by default
+  name:         row.actor.name,
+  position:     row.actor.position,             // role text; may contain the company
+  company_guess: parseCompanyFromPosition(row.actor.position), // best-effort, unreliable
+  source_type:  <"comment" | "reaction">,       // from WHICH actor returned the row
+  comment_text: row.commentary,                 // comments only — what they SAID (use it!)
+  reaction_type: row.reactionType,              // reactions only
 }
 ```
 
@@ -225,12 +229,19 @@ engagements in a `signals: []` array for step 11.
 ### 8. Pre-score against your ICP (the cheap gate)
 
 Read your **full** GTM profile, then give every deduped engager a **pre-score**.
-This is deliberately coarse — all you have so far is the **headline/title**, any
-**company named in the headline**, and the **engagement signal** (they showed up
-for this creator's topic). You're missing employee size, what the company
-actually does, and industry, so don't over-trust it. Its only job is to **gate
-the paid enrichment**: keep anyone plausibly on-ICP, set the clearly-off ones
-aside (labelled, never dropped).
+This is deliberately coarse, because the scraper only gives you four things to
+judge on:
+
+- **`position`** — their role string (and the company, *if* it's embedded there).
+- **`comment_text`** — what they actually wrote. This is the strongest signal you
+  have; a comment describing their role, stack, or pain is gold. Reactors have no
+  text, so they pre-score weaker than commenters.
+- **`reaction_type`** — a weak interest cue for reactors.
+- **the engagement itself** — they showed up for this creator's topic.
+
+You are **missing employee size, industry, and what the company does** — so don't
+over-trust the pre-score. Its only job is to **gate the paid enrichment**: keep
+anyone plausibly on-ICP, set the clearly-off ones aside (labelled, never dropped).
 
 ```bash
 # Your GTM profile / ICP — same data as the get_gtm_profile MCP tool
@@ -473,6 +484,13 @@ reruns safe.
 **What's the worst-case Apify spend for one creator?**
 17 paid runs (1 post-search + 8 × 2 engager pulls), roughly $3.40, or about
 $2.50 per 300 leads on HarvestAPI pricing at time of writing.
+
+**Can I get richer profile data for a better pre-score?**
+By default the scraper returns only name / linkedinUrl / position / comment text.
+HarvestAPI has an optional **Profile Scraper Mode** that visits each profile for
+more fields (and clean URLs) at extra Apify cost. Usually it's cheaper to keep
+the pre-score coarse and let the **enrichment** step resolve the real company and
+firmographics, since you're paying to enrich the keepers anyway.
 
 **What does a lead with a verified email cost?**
 Two parts: the Apify scrape is **~$0.008 per engager** (~$2.50 / 300), and the
