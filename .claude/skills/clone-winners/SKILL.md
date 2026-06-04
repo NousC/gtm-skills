@@ -157,6 +157,9 @@ insert the enriched buyers, and record the campaign copy per variant via
 - **The wins define the ICP.** Surface where the closed deals diverge from the
   saved ICP and let the operator choose.
 - **Cost + approval before spend; dedup before enrich.**
+- **Stamp the lead source.** Highly recommended: set `fields.source` to
+  `"Clone winners"` on every lead, so reply rates can be compared across lead
+  sources later and you can see which channel actually converts.
 - **Write from what closed, cite it.** The angle traces to the sequence that won
   the seed deals, not a guess.
 

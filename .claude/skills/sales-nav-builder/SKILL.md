@@ -255,12 +255,12 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
           "linkedin_url":"https://www.linkedin.com/in/janedoe", "company":"Acme",
           "fields": { "title":"Founder", "icp": true, "icp_score": 86,
                       "icp_reason":"AI-native GTM agency on Clay, 1–10, US — core ICP",
-                      "source":"sales_nav", "enriched_by":"evaboot" } },
+                      "source":"Sales Nav lead builder", "enriched_by":"evaboot" } },
         { "name":"Bob Legacy", "company":"OldSEO Co",
           "linkedin_url":"https://www.linkedin.com/in/boblegacy",
           "fields": { "title":"Owner", "icp": false, "icp_score": 22,
                       "icp_reason":"SEO/web-design shop, not a GTM agency",
-                      "source":"sales_nav" } } ] }'
+                      "source":"Sales Nav lead builder" } } ] }'
 ```
 
 The list is now filterable **ICP vs non-ICP** — you see the qualified core with
@@ -315,6 +315,9 @@ profile once, then scores the whole batch against it before any email spend.
 - **The skill never auto-deletes.** It keeps and labels every lead (`icp` /
   `icp_score` / `icp_reason`); deletion is the operator's manual control step in
   the Nous list, so a misjudged lead is never lost.
+- **Stamp the lead source.** Highly recommended: set `fields.source` to
+  `"Sales Nav lead builder"` on every lead, so reply rates can be compared across
+  lead sources later (this skill vs Apollo vs inbound vs LinkedIn engagers).
 
 ## Customize / Set up
 

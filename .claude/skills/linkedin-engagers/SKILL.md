@@ -345,6 +345,7 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
         "linkedin_url":"<normalized>", "company":"Acme",
         "fields": { "title":"Founder", "icp":true, "icp_score":84,
                     "icp_reason":"GTM founder engaging on outbound — core ICP",
+                    "source":"High-intent LinkedIn scraper",
                     "creator":"<creator_url>", "enriched_by":"prospeo" } },
       { "name":"Bob Lurker", "linkedin_url":"<normalized>",
         "fields": { "title":"Designer", "icp":false, "icp_score":18,
@@ -473,6 +474,10 @@ Pushed to <outbound>: <pushed> (skipped <push_skipped>)
 - **Email finding is OPTIONAL and keepers-only.** No provider key → skip it, save
   leads-only. Never derive an email from the unreliable scraped company; use the
   profile URL. Never enrich the off-ICP or dupes.
+- **Stamp the lead source.** Highly recommended: set `fields.source` on every
+  lead to this skill's name — `"High-intent LinkedIn scraper"`. It's how you
+  later compare reply rates across lead sources (this skill vs Apollo vs inbound
+  vs Sales Nav) and find the channel that actually converts.
 - **State after success, never before.** A failed mid-flight call must leave
   the post NOT marked mined, so the next run retries it.
 - **Observations for everyone.** Even leads skipped as duplicates get their

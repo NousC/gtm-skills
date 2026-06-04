@@ -225,6 +225,7 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -d '{ "leads": [
         { "name":"Jane Doe", "email":"jane@acme.com", "company":"Acme",
           "fields": { "title":"Founder", "niche":"outbound GTM agency",
+                      "source":"Lead-list builder",
                       "matched_on":"keywords", "enriched_by":"fullenrich" } } ] }'
 ```
 
@@ -239,6 +240,9 @@ Insert as they verify so the list fills in live. Then point the user at
 - **Dedup before you reveal.** Run `/v2/dedup`; reveal only `net_new`.
 - **Never guess an email.** Unverifiable contacts are flagged, not invented.
 - **Name the list from the ICP** and tell the user where to find it.
+- **Stamp the lead source.** Highly recommended: set `fields.source` to
+  `"Lead-list builder"` on every lead, so reply rates can be compared across lead
+  sources later (this skill vs Sales Nav vs inbound vs LinkedIn engagers).
 
 ## Customize / Set up
 
