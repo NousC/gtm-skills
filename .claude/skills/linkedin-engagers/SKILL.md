@@ -1,6 +1,6 @@
 ---
 name: linkedin-engagers
-description: From one or more LinkedIn creators' profile URLs, scrape the commenters AND reactors on their recent posts via Apify HarvestAPI, dedupe them, score each one against your Nous ICP, and save the clean list into both Nous and a Google Sheet — with every engagement recorded as a public signal. Use when you want to turn a creator's audience into a high-intent, ICP-filtered outbound list, or refresh it on a schedule.
+description: From one or more LinkedIn creators' profile URLs, scrape the commenters AND reactors on their recent posts via Apify HarvestAPI, dedupe them, and score every one against your Nous ICP (icp / score / reason, keeping both fit and non-fit, labelled). It then finds verified emails on the ICP-qualified ones by their LinkedIn URL — so you still get the email even when the scraped company is wrong — and saves the ICP-segmented list into both Nous and a Google Sheet, with every engagement recorded as a public signal. Use to turn a creator's audience into a high-intent, ICP-scored outbound list, or refresh it on a schedule.
 ---
 
 # High-intent LinkedIn scraper
@@ -18,7 +18,7 @@ These are warm leads by definition: they showed up for the content. Pointed at
 the right creators every two weeks, this is a steady source of in-market,
 on-ICP prospects with the source of the signal traced on every record.
 
-The flow: **Apify → LinkedIn → Claude Code → Nous → Google Sheet.**
+The flow: **Apify → Claude (ICP score) → Prospeo (email on keepers) → Nous → Google Sheet.**
 
 ## How to invoke
 
@@ -47,7 +47,14 @@ API keys). No account yet? It's free at opennous.cloud." ICP scoring also needs
 a **GTM profile** set (opennous.cloud → GTM Context); without one the skill
 keeps every engager and skips the fit step — tell them, then continue.
 
-**3. Optional outputs.** Only if they want them: mirror to a sheet
+**3. Email enrichment (optional but recommended).** Check for `PROSPEO_API_KEY`
+(LinkedIn URL → verified email + clean company, one synchronous call) or
+`FULLENRICH_API_KEY` (charge-on-found waterfall). Missing → "I find the email
+from each person's LinkedIn URL, which also fixes the company name. Add
+`export PROSPEO_API_KEY=...` (prospeo.io) to get emails; without it the list
+saves leads-only."
+
+**4. Optional outputs.** Only if they want them: mirror to a sheet
 (`export GOOGLE_SHEET_ID=1AbC...`, plus `gcloud auth login` once) or push to
 outbound (`export HEYREACH_API_KEY=...` for LinkedIn, `SMARTLEAD_API_KEY` for
 email).
@@ -83,8 +90,14 @@ Worst-case backfill per creator = 1 search + 8 × 2 = **17 paid Apify runs**.
 **Engagement is the signal, not the form-fill.** Comments and reactions in
 public beat form fills. Treat that as the lead.
 
-**ICP-filter before you spend on outreach.** Scoring against your GTM profile
-keeps the off-ICP noise out of the list before it ever reaches a campaign.
+**Score against the ICP, keep both, spend only on keepers.** Score every engager
+against your GTM profile (icp / score / reason). Keep the non-ICP ones too,
+labelled — never silently drop them — and find emails only on the ICP-qualified,
+so the variable cost lands on the people you'd actually contact.
+
+**The LinkedIn URL is the key, not the company.** The scraped company is
+unreliable, so don't derive a domain from it. Feed the profile URL straight to a
+LinkedIn-native finder, which returns the email and the real company at once.
 
 **Trace every record back to why it's there.** Every person gets a
 `public_signal` on their record in Nous — the post URL, type, timestamp. Six
@@ -211,56 +224,98 @@ engagements in a `signals: []` array for step 11.
 
 ### 8. Score each engager against your ICP
 
-Read your GTM profile from Nous, then score every deduped engager against it:
+Read your **full** GTM profile from Nous, then score every deduped engager
+against it. Same ICP model `sales-nav-builder` uses; it runs in the skill on
+your Claude tokens — Nous holds the ICP, the skill reasons with it.
 
 ```bash
-# Your GTM profile — filter to the categories that define your ICP
+# Your GTM profile / ICP — same data as the get_gtm_profile MCP tool
 curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market,Product,Pricing,Competitors" \
   -H "Authorization: Bearer $NOUS_API_KEY"
 ```
 
-Returns `{ facts: [{ id, category, content, source, recorded_at }], count,
-by_category }`. Use the `ICP`, `Market`, and `Product` facts to judge each
-engager on the data you already have (title, company, headline):
+For each engager, write three values into its `fields` and **keep it regardless**:
 
-- `fit` — clearly matches the ICP. Keep, mark `icp_fit: "fit"`.
-- `maybe` — adjacent but unclear. Keep, mark `icp_fit: "maybe"`.
-- `off` — clearly outside the ICP. **Filter out** of the list.
+- `icp`: `true | false` — does this person match the ICP?
+- `icp_score`: `0–100` — how strong the fit is.
+- `icp_reason`: one short sentence — why, citing what matched or missed.
 
-If no GTM profile is set, skip this step and keep everyone (mark `icp_fit:
-"unscored"`). Never invent a score — judge only on the fields you have.
+Judge on what you actually have: the **headline/title**, any **company named in
+the headline**, and the **engagement signal itself** — they showed up for this
+creator's topic, which is its own ICP cue. **Don't drop the non-ICP ones** — they
+stay in the list, labelled, leads-only (no email spend). Only `icp: true`
+engagers go on to email enrichment (step 8.5), so the variable cost lands only on
+the people you'd actually contact.
+
+If no GTM profile is set, mark `icp: null` and `icp_reason: "no ICP set"`, keep
+everyone, and tell the operator to fill in GTM Context. Never invent a score.
+
+### 8.5. Find emails on the ICP-qualified — by LinkedIn URL (this fixes the email gap)
+
+You have a reliable **profile URL** but the scraped `company` is usually wrong,
+so deriving a domain to find an email fails. **Skip the company guess entirely:**
+feed the LinkedIn URL straight to a LinkedIn-native finder, which returns the
+verified work email **and** the real company + domain. Do this **only for
+`icp: true` net-new engagers** — never pay to enrich non-ICP or duplicates.
+
+```bash
+# Prospeo — LinkedIn URL → verified work email (synchronous, one call)
+curl -s -X POST "https://api.prospeo.io/linkedin-email-finder" \
+  -H "X-KEY: $PROSPEO_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "url": "<engager_linkedin_url>" }'
+# Alternative: FullEnrich waterfall — accepts linkedin_url, charge-on-found,
+# cross-sources 20+ providers for a higher hit rate.
+```
+
+Returns the work `email` plus the resolved `company`, `domain`, and `position`.
+Write the verified email and clean company back onto the lead (overwriting the
+unreliable scraped company). No key set → skip enrichment, save leads-only, and
+tell the operator they can add `PROSPEO_API_KEY` to get emails.
 
 ### 9. Create the Nous lead list
 
+The create response returns both the `id` and the `workspace_id` — capture both.
+
 ```bash
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
-  -H "Authorization: Bearer $NOUS_API_KEY" \
-  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "name": "<LIST_NAME>", "source": "linkedin_engagers" }'
+# → { "lead_list": { "id": "<LIST_ID>", "workspace_id": "<WS>", ... } }
+
+# Declare the icp columns so the list filters ICP vs non-ICP in the Nous UI.
+# This PATCH REQUIRES workspaceId in the body — use the <WS> above.
+curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "workspaceId": "<WS>", "columns": [
+        {"key":"title","label":"Title"}, {"key":"company","label":"Company"},
+        {"key":"icp","label":"ICP"}, {"key":"icp_score","label":"ICP score"},
+        {"key":"icp_reason","label":"Why"}, {"key":"creator","label":"From creator"} ] }'
 ```
 
-Capture `lead_list.id`.
+### 10. Bulk-add ALL net-new engagers, ICP-tagged (keep both)
 
-### 10. Bulk-add the high-fit leads (server also dedupes)
-
-Add the `fit` and `maybe` engagers (drop `off`).
+Add **every** net-new engager — ICP and non-ICP. ICP-qualified ones carry their
+verified email; non-ICP ones are saved leads-only. Use `name` + a `fields` JSONB
+(the verified API shape — top-level `full_name`/`icp_fit` are ignored):
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
-  -H "Authorization: Bearer $NOUS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "importDuplicates": false,
-    "leads": [
-      { "full_name": "...", "linkedin_url": "<normalized>", "title": "...", "company": "...", "icp_fit": "fit" },
-      ...
-    ]
-  }'
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "importDuplicates": false, "leads": [
+      { "name":"Jane Doe", "email":"jane@acme.com",
+        "linkedin_url":"<normalized>", "company":"Acme",
+        "fields": { "title":"Founder", "icp":true, "icp_score":84,
+                    "icp_reason":"GTM founder engaging on outbound — core ICP",
+                    "creator":"<creator_url>", "enriched_by":"prospeo" } },
+      { "name":"Bob Lurker", "linkedin_url":"<normalized>",
+        "fields": { "title":"Designer", "icp":false, "icp_score":18,
+                    "icp_reason":"design role, outside ICP", "creator":"<creator_url>" } } ] }'
 ```
 
 `importDuplicates: false` is the default — only set `true` after warning the
-operator that they're about to create duplicate records. Response:
-`{ inserted, skipped }`.
+operator. Response: `{ inserted, skipped }`. **Leads land immediately but Nous
+resolves them in the background, so names and the `icp` tags fill in ~10s after
+insert** — tell the operator the list populates shortly, don't report it empty.
 
 **If steps 9 or 10 fail (non-2xx), do not abort the run.** Warn the operator,
 then continue to steps 11-13 so the engagements are still recorded as public
@@ -370,8 +425,11 @@ Pushed to <outbound>: <pushed> (skipped <push_skipped>)
 - **100 engagers per post.** Pass `maxItems: 100` on every comments/reactions call.
 - **Dedupe with normalized URLs.** Lowercase, strip trailing slash, strip
   `www.`, strip query/fragment — before comparing.
-- **Score honestly.** Judge ICP fit only on the fields you have; mark
-  `unscored` when there's no GTM profile rather than guessing.
+- **Score honestly, keep both.** Judge ICP fit only on the fields you have, write
+  `icp` / `icp_score` / `icp_reason`, and keep the non-ICP ones labelled — never
+  silently drop them. Mark `icp: null` when there's no GTM profile.
+- **Emails on ICP keepers only, by LinkedIn URL.** Never derive an email from the
+  unreliable scraped company; use the profile URL. Never enrich non-ICP or dupes.
 - **State after success, never before.** A failed mid-flight call must leave
   the post NOT marked mined, so the next run retries it.
 - **Observations for everyone.** Even leads skipped as duplicates get their
@@ -397,15 +455,25 @@ reruns safe.
 $2.50 per 300 leads on HarvestAPI pricing at time of writing.
 
 **How does the ICP scoring work?**
-The skill reads your GTM profile from Nous and judges each engager's title and
-company against it, dropping the clearly off-ICP profiles. Set up your GTM
-profile at opennous.cloud → GTM Context first; without one, every engager is
-kept and marked `unscored`.
+The skill reads your full GTM profile from Nous and scores each engager — `icp`
+(true/false), `icp_score` (0–100), `icp_reason` — on their headline, any company
+in it, and the engagement signal itself. It **keeps both** the ICP and non-ICP
+ones, labelled, so the list filters ICP vs non-ICP in Nous. Set up your GTM
+profile at opennous.cloud → GTM Context first; without one, scoring is skipped
+and everyone is kept.
+
+**How do I get the email when the scraped company is wrong?**
+That's exactly the problem this fixes. The scraped company is unreliable, so the
+skill doesn't try to derive a domain from it. It sends the person's **LinkedIn
+profile URL** — which you do have reliably — to a LinkedIn-native finder
+(Prospeo, or a FullEnrich waterfall), which returns the verified work email
+together with the real company and domain. It only does this for the
+ICP-qualified people, so you don't pay to enrich the off-ICP ones.
 
 **Why save into both Nous and a Google Sheet?**
 Nous is the resolved record the rest of your stack reads from. The sheet is for
 the humans who want to eyeball or hand the list to a teammate. Both get the
-same high-fit leads.
+same ICP-scored leads.
 
 **Will it create duplicates of people I already have in Nous?**
 No. The bulk-upload endpoint matches on email and normalized `linkedin_url`
