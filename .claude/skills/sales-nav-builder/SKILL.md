@@ -1,143 +1,159 @@
 ---
 name: sales-nav-builder
-description: Turn a LinkedIn Sales Navigator search into a clean, verified lead list in Nous. Claude expands your ICP into the exact Sales Nav filters and keywords to apply, you run the search, and Evaboot extracts the leads and finds plus verifies every work email in one pass. It dedupes against Nous and saves the list, ready for outbound. The sharpest targeting available, for people who have Sales Navigator. Pairs with lead-builder, which is the no-Sales-Nav path.
+description: Turn a LinkedIn Sales Navigator search into a clean, ICP-scored lead list in Nous, paying for emails only on the leads you keep. Claude builds the search from structural filters first (years at company, headcount, the right industries) with modern-vocabulary keywords second, you run it, and Evaboot extracts the leads with no emails. Nous then excludes the wrong company types, dedupes, and ICP-scores every lead. Only the ICP-qualified net-new leads get emails found, so the variable cost is spent on keepers. Non-ICP leads stay in the list labelled, never deleted. For people who have Sales Navigator.
 ---
 
 # Sales Nav lead builder
 
 ## What it does
 
-You have **LinkedIn Sales Navigator** — the best targeting filters that exist.
-This skill turns a Sales Nav search into a finished lead list: **Claude builds
-the search**, **Evaboot extracts it and verifies every email**, and the leads
-land **deduped in a Nous lead list** ready for outbound.
+You have **LinkedIn Sales Navigator** — the sharpest targeting filters that
+exist. This skill turns a Sales Nav search into a clean, **ICP-scored** lead
+list in Nous, and spends email credits **only on the leads you actually keep**.
 
-The division of labor is the point. Sales Nav has unbeatable filters but **won't
-let you export**. Evaboot does the one hard, fragile thing — pulling the results
-out and verifying the emails — as a maintained tool, safely. The skill does what
-an LLM is good at: turning your ICP into a sharp search, and the Nous
-integration.
+The money model is the whole point. Finding and verifying emails is the variable
+cost, so we never spend it on junk company types or duplicates. We pay to pull
+the LinkedIn data, **filter and score for free inside Nous**, then pay to find
+emails only on the survivors.
 
-The flow: **Claude (search spec) → Sales Nav (the search) → Evaboot (extract +
-verify email) → Nous (dedup + save).**
+```
+Stage 1  EXTRACT (pay)   Evaboot, NO emails → LinkedIn data only.   1 credit / lead
+Stage 2  FILTER (free)   In Nous: exclude wrong company types → dedup → ICP-score
+Stage 3  EMAILS (pay)    Evaboot Email Finder, only on ICP-qualified net-new.
+                         1 credit / email found (misses are free)
+Stage 4  SAVE            Lead list, every lead tagged icp true/false, emails on
+                         the qualified ones, non-ICP kept and labelled
+```
+
+The flow: **Claude (structural search) → Sales Nav → Evaboot extract (no emails)
+→ Nous (exclude + dedup + score) → Evaboot emails on keepers → Nous list.**
 
 ## How to invoke
 
-`/sales-nav-builder` — or *"build me a list of outbound agency founders from
+`/sales-nav-builder` — or *"build me a list of outbound GTM agency founders from
 Sales Navigator."*
 
 ## First-run setup (you, the agent, run this once as a short interview)
 
-**1. LinkedIn Sales Navigator (required).** Confirm the user has a Sales Nav
-seat. Evaboot will not run without it — it extracts live from your own Sales Nav
-search (no third-party database, which is what keeps it GDPR-clean and your
-account safe). No Sales Nav → point them to `lead-builder` instead.
+**1. LinkedIn Sales Navigator (required).** Confirm the user has a seat. Evaboot
+extracts live from their own Sales Nav search (no third-party database, which
+keeps it account-safe and GDPR-clean). No Sales Nav → point them to
+`lead-builder`.
 
-**2. Evaboot (required) — extract + find email + verify.** Check for
-`EVABOOT_API_KEY`. Missing → "Evaboot pulls your Sales Nav search out and finds
-plus verifies every work email. Grab a key at evaboot.com → settings → API, then
-`export EVABOOT_API_KEY=...`. It's credit-based — a lead with a verified email is
-2 credits — from $9/mo."
+**2. Evaboot (required) — extract + email finder.** Check for `EVABOOT_API_KEY`
+(dashboard → Integrations → API). It's credit-based: **1 credit to export a
+lead (no email), 1 more only when an email is found** (misses are free). From
+$9/mo.
 
-**3. Nous — dedup + where the list lands (required).** Check `NOUS_API_KEY`.
-Missing → "`export NOUS_API_KEY=pk_xxx` (opennous.cloud → Settings → API keys).
-It dedupes against your pipeline and saves the list. Free at opennous.cloud."
+**3. Nous — exclude, dedup, score, and where the list lands (required).** Check
+`NOUS_API_KEY` (`pk_`). It runs the free middle stage and saves the list.
 
 ---
 
-## Phase 1 — Build the Sales Nav search (Claude's job)
+## Phase 1 — Build the search: structural filters first, keywords second
 
-Sales Nav is only as good as the search you run. Turn the user's ICP into the
-exact filters and keyword set to apply — the same targeting intelligence as
-`lead-builder`, aimed at Sales Nav's filter panel:
+The biggest mistake is leading with keywords. Legacy local agencies and modern
+AI-native GTM agencies **both** say "lead generation" and "demand generation" —
+keywords can't separate them. **Structure can.** Build the search in this order:
 
-- **Titles / seniority** → Founder, Co-founder, CEO, Owner (and the seniority
-  toggle).
-- **Company headcount** → the size band (e.g. Self-employed + 1–10).
-- **Industry** → the closest Sales Nav industry (e.g. Marketing & Advertising).
-- **Keywords** → expand the category into every variant and give the user the
-  exact keyword string to paste — *"lead generation OR demand generation OR
-  appointment setting OR cold email OR outbound OR SDR OR RevOps."*
-- **Geography** → region / country.
+**1. Years in current company ≤ 5 — the single biggest lever.** This instantly
+removes the 16-to-24-year-tenure legacy marketing, SEO, and design veterans and
+keeps the founders who started modern agencies. Lead with this.
 
-Then either:
-- **Hand the user the filter recipe** to apply in Sales Nav and copy the search
-  URL back, or
-- If they already have a Sales Nav search URL, take it directly.
+**2. Company headcount** — the size band from the saved ICP (e.g. 1–10).
 
-### Cross-check against the saved ICP
+**3. The right industries — and the trap to avoid.** For modern AI-native GTM
+agencies, do **not** use **"Advertising Services"** — that is where the
+word-of-mouth, SEO, web-design, and branding shops live. The actual ICP founders
+are tagged under:
+> **Marketing Services · Business Consulting & Services · IT Services & IT
+> Consulting · Software Development · Technology, Information & Internet**
+
+**4. Seniority / title** — Founder, Co-founder, CEO, Owner.
+
+**5. Keywords — a FLAT POSITIVE `OR` list, modern vocabulary only.** This is the
+precision lever once structure is doing the separating. Use terms a 20-year
+word-of-mouth shop never uses:
+> `Clay OR Claude OR "AI-native" OR GTM OR "go-to-market" OR "AI SDR" OR RevOps
+> OR outbound OR "cold email"`
+
+Keep generic `lead generation` / `demand generation` only when the structural
+filters above are already separating legacy from modern.
+
+### Hard keyword rule — never break this
+
+Sales Nav's keyword box **breaks on Boolean `NOT`.** A long `(...) AND NOT (...)`
+returns **0 results** every time, and even a short `(positives) NOT (negatives)`
+returns 0 when a leading paren is dropped on paste, a smart-quote sneaks in, or
+the box hits its length limit. **Never put exclusions in the keyword box.** Use a
+flat positive `OR` list only, and do *all* exclusion downstream in Stage 2.
+
+### The 2,500 export cap
+
+Sales Nav silently truncates any export at **2,500 leads** — a search returning
+3,000 loses 500 with no warning. If the preview count is above 2,500, tell the
+user to **tighten below it** (narrow the years band, headcount, or geography) so
+the pull is complete.
+
+### Cross-check the saved ICP
 
 ```bash
 curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
   -H "Authorization: Bearer $NOUS_API_KEY"
 ```
 
-Aligned → say so. Diverges → surface it and ask before running, same as
-`lead-builder`.
+Aligned → say so. Diverges → surface it and ask before running.
 
-## Phase 2 — Confirm the search and the credit cost, then run
+## Phase 2 — Confirm the search and the two-stage cost, then run
 
-Show the search back, the expected volume (Sales Nav shows the result count), and
-the Evaboot credit cost. **Wait for a yes.**
+Show the search back, the volume (Sales Nav's result count, under 2,500), and the
+**two-stage** cost — making clear emails are charged only on survivors.
 
 ```
 Sales Nav search:
-  Titles:   Founder / Co-founder / CEO / Owner
-  Size:     1–10 employees
-  Industry: Marketing & Advertising
-  Keywords: lead generation OR demand generation OR appointment setting OR
-            cold email OR outbound OR SDR
-  Geo:      United States
+  Years in company:  ≤ 5
+  Headcount:         1–10
+  Industries:        Marketing Services, Business Consulting, IT Services,
+                     Software Development, Technology & Internet
+                     (NOT Advertising Services)
+  Titles:            Founder / Co-founder / CEO / Owner
+  Keywords (flat OR): Clay OR Claude OR "AI-native" OR GTM OR "AI SDR" OR RevOps
+  Geo:               United States
 
-Sales Nav shows ~2,400 results. After dedup against Nous, ~1,800 net-new.
-Evaboot cost: ~1,800 leads × 2 credits = ~3,600 credits.
+Sales Nav shows ~1,300 results (under the 2,500 cap — complete pull).
+
+Stage 1 extract:  ~1,300 leads × 1 credit            = ~1,300 credits  (now)
+Stage 2 filter:   exclude wrong types + dedup + score = free
+Stage 3 emails:   ~850 ICP net-new × ~70% hit         = ~600 credits   (only on keepers)
+Total: ~1,900 credits  (vs ~2,200 to find emails on all 1,300 — and cleaner)
 Run it?
 ```
 
-## Phase 3 — Extract, verify, save to Nous, report back
+## Phase 3 — Extract LEADS ONLY (no emails), the credit-saver
 
-On a yes, run Evaboot on the search, dedup, and save the list:
+Default the export to **No Emails** (leads-only) — this is the documented
+default, because emails are Stage 3. Prefer Evaboot's **LinkedIn Extraction API**
+endpoint with the Sales Nav search URL and emails off; if you don't have API
+extraction wired, the user runs the search in Sales Nav and clicks **Export with
+Evaboot** with email-finding **off**, then hands you the leads-only file.
 
-> "Started. About 1,800 verified leads will land in your new Nous list
-> **'Founder · outbound agencies · 1–10 · US'**. I'll dedup against your pipeline
-> as they come in."
+Either way you get, per lead: `name`, `title`, `company`, `company_domain`,
+`linkedin_url` — **no email yet**. Cost: 1 credit per lead.
 
-**Default list title:** `<Buyer> · <niche> · <size> · <geo>`.
+## Phase 3.5 — Filter and score in Nous (free, before any email spend)
 
----
+Do all three before spending a single email credit:
 
-## The pipeline (the real calls)
+### 1. Exclude the wrong company types (deterministic, by company identity)
 
-Evaboot splits into two jobs: the **Chrome extension** extracts the leads out of
-your Sales Nav search, and the **API** finds + verifies the emails. The skill
-uses both.
+Drop leads whose **company name or description** matches the exclusion list.
+Match on the company's *identity*, not a stray profile mention, so a real GTM
+agency that says "marketing" once isn't nuked.
 
-### 1a. Extract the leads — Evaboot Chrome extension (you, once per search)
-
-Sales Nav won't export, and Evaboot's *extraction* lives in its extension, not
-the API. So: run the search in Sales Nav → click **Export with Evaboot** → it
-cleans the list. Turn email-finding **on** in the export and it returns the
-finished file in one pass; leave it off to export leads-only and let the API do
-emails in 1b. Hand this skill the resulting CSV (name, title, company, domain,
-LinkedIn URL, and — if enabled — a verified email).
-
-### 1b. Find + verify the emails — Evaboot API (only if the CSV has no emails)
-
-For a leads-only export, find and verify each email through the confirmed API
-endpoint (1 credit per email found + verified; Bearer token from the dashboard →
-Integrations → API):
-
-```bash
-curl -s -X POST "https://api.evaboot.com/v1/email-finder/" \
-  -H "Authorization: Bearer $EVABOOT_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "prospects": [
-        { "first_name":"Jane","last_name":"Doe",
-          "company_name":"Acme","domain":"acme.com" } ] }'
-```
-
-Returns the work email with a verification status; keep the verified ones.
-Evaboot is API + extension only (no MCP) — the extension does the Sales Nav
-extraction, this endpoint does the emails.
+> design · web design · web development · website · graphic · UX/UI · SEO ·
+> search engine · branding · logo · creative · recruiting · staffing ·
+> recruitment · talent · headhunting · executive search · word of mouth ·
+> PR · public relations · social media management · digital marketing
 
 ### 2. Dedup by domain — Nous (free)
 
@@ -147,56 +163,101 @@ curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
   -d '{ "domains": ["acme.com","beta.io"] }'
 ```
 
-Keep `status === 'net_new'`.
+Keep `status === 'net_new'` — no point paying for emails on leads already in the
+pipeline.
 
-### 3. Save to a Nous lead list
+### 3. ICP-score every surviving lead (Claude, against the saved ICP)
+
+Fetch the ICP/Market facts (the call above), then score each lead against them.
+For each lead, decide `icp: true | false` and an `icp_score` 0–100. This is your
+reasoning step — match the lead's company, role, size, and signals to the saved
+ICP. Only `icp: true` leads proceed to Stage 3 emails.
+
+## Phase 4 — Find emails on keepers, save the ICP-segmented list
+
+### Find emails — Evaboot Email Finder, ICP-qualified net-new only
+
+```bash
+curl -s -X POST "https://api.evaboot.com/v1/email-finder/" \
+  -H "Authorization: Bearer $EVABOOT_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "prospects": [
+        { "first_name":"Jane","last_name":"Doe",
+          "company_name":"Acme","company_domain":"acme.com" } ] }'
+```
+
+Charged 1 credit per email **found** (misses are free). Hit rate runs ~60–80%.
+
+### Save the list — every lead tagged, non-ICP kept
+
+Create the list with an `icp` column, then insert **all** surviving net-new
+leads. ICP-qualified leads carry their found email; non-ICP leads are saved
+**leads-only, no email spend**, flagged for visibility:
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "name": "Founder · outbound agencies · 1–10 · US", "source": "sales_nav" }'
+  -d '{ "name": "Founder · GTM agencies · 1–10 · US", "source": "sales_nav",
+        "columns": ["title","icp","icp_score","source"] }'
 
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "leads": [
         { "name":"Jane Doe", "email":"jane@acme.com",
           "linkedin_url":"https://www.linkedin.com/in/janedoe", "company":"Acme",
-          "fields": { "title":"Founder", "source":"sales_nav",
-                      "enriched_by":"evaboot" } } ] }'
+          "fields": { "title":"Founder", "icp": true, "icp_score": 86,
+                      "source":"sales_nav", "enriched_by":"evaboot" } },
+        { "name":"Bob Legacy", "company":"OldSEO Co",
+          "linkedin_url":"https://www.linkedin.com/in/boblegacy",
+          "fields": { "title":"Owner", "icp": false, "icp_score": 22,
+                      "source":"sales_nav" } } ] }'
 ```
 
-Then point the user at `campaign-writer`.
+The list is now filterable **ICP vs non-ICP** — you see the qualified core with
+emails, and the rest you also pulled, leads-only, without losing them. That keeps
+the ICP definition inspectable and tightenable against real pulled data.
+
+Then point the user at `campaign-writer` for the ICP-qualified segment.
 
 ## Hard rules — never break these
 
-- **Build the search first.** A sharp Sales Nav search is the product — expand
-  the category into real keyword variants, don't run "agencies."
-- **Cost and approval before you run.** Phase 2 shows the credit estimate.
-- **Dedup before you keep.** Run `/v2/dedup`; keep `net_new`.
-- **Keep only verified emails.** Evaboot verifies; never save an unverified guess.
-- **Name the list from the ICP.**
+- **Structural filters first.** Years-in-company ≤ 5, headcount, the right
+  industries — keywords are secondary.
+- **Flat positive `OR` keywords only.** Never put exclusions in the Sales Nav
+  keyword box; it returns 0 results. All exclusion happens in Stage 2.
+- **Not "Advertising Services"** for modern agencies — it's the legacy trap.
+- **Warn at the 2,500 export cap.** Tighten below it for a complete pull.
+- **Extract leads-only first.** Emails are Stage 3, on keepers only — never pay
+  to find emails on junk types or duplicates.
+- **Keep non-ICP leads, labelled.** Score and tag, never delete — the list stays
+  filterable and the ICP stays inspectable.
 
 ## Customize / Set up
 
-- **Two ways in** — let Claude build the search recipe, or hand it an existing
-  Sales Nav URL.
-- **Swap the extractor** — Evaboot is the default; the same flow works with any
-  Sales Nav export tool that returns verified emails (Wiza, etc.) if you set its
-  key instead.
-- **Rename the default list.**
+- **Tune the structural filters** — the years cap, headcount band, industries,
+  titles.
+- **Edit the exclusion list** — it's the default above, adjust per niche.
+- **Set the ICP threshold** — the `icp_score` cutoff that gates email spend.
+- **Swap the extractor** — Evaboot is the default; any Sales Nav export tool that
+  returns leads-only works.
 
 ## Frequently asked questions
 
-**Why Sales Nav + Evaboot instead of just a database?**
-Sales Nav's filters are sharper than any API's, especially for small, niche
-companies, and the data is live. Evaboot is the cleanest way to get it out with
-verified emails — one tool, account-safe, from $9/mo.
+**Why extract without emails first?**
+Emails are the variable cost. Pulling LinkedIn data is unavoidable, but finding
+emails on junk company types or duplicates is pure waste. So we extract leads
+only, filter and score for free in Nous, and pay for emails on survivors. On a
+~1,300-lead run that's ~1,900 credits instead of ~2,200, and a cleaner list.
+
+**Why keep non-ICP leads instead of deleting them?**
+So the list stays filterable and you keep visibility into what you pulled. It
+also lets you inspect and tighten your ICP definition against real data over
+time. Non-ICP leads cost no email credits — they sit leads-only and flagged.
 
 **What if I don't have Sales Navigator?**
-Use `lead-builder` — it does the same job from Apollo's free people search with
-Claude building the targeting, no Sales Nav needed.
+Use `lead-builder` — same job from Apollo's people search with Claude building
+the targeting, no Sales Nav needed.
 
 **What does it cost?**
-Sales Nav (which you already have) plus Evaboot credits — a lead with a verified
-email is 2 credits, roughly $0.04–0.07 each depending on your plan. The Nous
-dedup keeps you from spending credits on companies you already have.
+Sales Nav (which you have) plus Evaboot credits: 1 per lead extracted, 1 per
+email found (misses free). The exclusion, dedup, and ICP scoring are free in
+Nous, and email credits are spent only on ICP-qualified net-new leads.
