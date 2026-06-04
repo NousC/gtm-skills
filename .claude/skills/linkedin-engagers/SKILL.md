@@ -276,24 +276,35 @@ and save the list leads-only (LinkedIn URL + the pre-score) — the skill still
 works. Tell the operator they can add `PROSPEO_API_KEY` (or `FULLENRICH_API_KEY`)
 to turn on emails.
 
-You have a reliable **profile URL** but the scraped `company` is usually wrong,
-so deriving a domain to find an email fails. **Skip the company guess entirely:**
-feed the LinkedIn URL straight to a LinkedIn-native finder, which returns the
-verified work email **and** the real company + domain. Do this **only for
-`icp_pre: true` net-new engagers** — never pay to enrich the off-ICP or dupes.
+Feed the LinkedIn URL straight to **Prospeo's `enrich-person`** — one call
+returns the verified work email **and** the real firmographics (company, domain,
+**employee count, industry**), which also feed the re-score in 8.6. Do this
+**only for `icp_pre: true` net-new engagers** — never pay to enrich off-ICP or
+dupes.
 
 ```bash
-# Prospeo — LinkedIn URL → verified work email (synchronous, one call)
-curl -s -X POST "https://api.prospeo.io/linkedin-email-finder" \
+# Prospeo enrich-person — LinkedIn URL → email + company firmographics
+curl -s -X POST "https://api.prospeo.io/enrich-person" \
   -H "X-KEY: $PROSPEO_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "url": "<engager_linkedin_url>" }'
-# Alternative: FullEnrich waterfall — accepts linkedin_url, charge-on-found,
-# cross-sources 20+ providers for a higher hit rate.
+  -d '{ "data": { "linkedin_url": "<engager_vanity_url>" } }'
+# → response.person.email.{email,status}  +  response.company.{name,domain,employee_count,industry}
+# 1 credit per email FOUND (misses are free). Alternative: FullEnrich waterfall.
 ```
 
-Returns the work `email` plus the resolved `company`, `domain`, and `position`.
-Write the email and the **real company + domain** back onto the lead, overwriting
-the unreliable scraped company. Cost: ~$0.05 per email found (charge-on-found).
+**Two things this step requires — both verified the hard way:**
+
+1. **VANITY URLs only.** Prospeo (and most finders) reject the **encoded**
+   `linkedin.com/in/ACoAA…` URLs the scraper returns by default — they error
+   `INVALID_DATAPOINTS`. Only clean slugs (`/in/spencerparikh`) enrich. So either
+   run the scrape with **HarvestAPI "Profile Scraper Mode"** (step 5) so every
+   engager comes back with a vanity URL, or resolve just the ICP keepers'
+   encoded URLs to vanity before this step. Without it, only the minority with
+   vanity URLs get emails.
+2. **Throttle + back off.** Free/low tiers rate-limit bursts (HTTP 400/429).
+   Space calls ~3s apart and retry with backoff; don't fire them in parallel.
+
+Write the email and the real company/domain back onto the lead. Expect a **~30–45%
+email match** on the enrichable (vanity-URL) set.
 
 ### 8.6. Re-score with the real company — the authoritative ICP score
 
