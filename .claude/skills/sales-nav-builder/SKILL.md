@@ -273,11 +273,16 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -d '{ "workspaceId":"<WS>", "importDuplicates": true, "leads": [
         { "name":"Jane Doe", "linkedin_url":"https://www.linkedin.com/in/janedoe",
           "company":"Acme",
-          "fields": { "title":"Founder", "icp": true, "icp_score": 86,
+          "fields": { "title":"Founder", "domain":"acme.com", "icp": true, "icp_score": 86,
                       "icp_reason":"AI-native GTM agency, 1-10, NA — core ICP",
                       "industry":"Software Development", "company_size":"2 to 10",
                       "evaboot_match":"NO", "source":"sales_nav" } } ] }'
 ```
+
+> **Always map Evaboot's `Company Domain` into `fields.domain`** (and `Company
+> Employee Range` into `fields.company_size`). The list's Domain column reads
+> `fields.domain`, so every lead shows its domain straight from the extract — no
+> enrichment needed. Enrichment later just fills the gaps (no-domain leads).
 
 Notes from the live run:
 - **Use `importDuplicates: true`** when you intend a complete list — otherwise
