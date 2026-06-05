@@ -1,6 +1,6 @@
 ---
 name: sales-nav-builder
-description: Turn a LinkedIn Sales Navigator search into a clean, ICP-scored lead list in Nous, paying for emails only on the leads you keep. Claude builds the search from structural filters first (years at company, headcount, the right industries) with modern-vocabulary keywords second, you run it, and Evaboot extracts the leads with no emails. Nous then excludes the wrong company types, dedupes, and ICP-scores every lead. Only the ICP-qualified net-new leads get emails found, so the variable cost is spent on keepers. Non-ICP leads stay in the list labelled, never deleted. For people who have Sales Navigator.
+description: Turn a LinkedIn Sales Navigator search into a complete, ICP-scored lead list in Nous, paying for emails only on the leads worth contacting. Claude builds the search structural-filters-first (years at company, headcount, the right industries) with modern-vocabulary keywords second, Evaboot extracts the whole search with NO emails, and then EVERY extracted lead is imported into Nous and ICP-scored in place — nothing is ever dropped, because you paid to extract it. The ICP score is the filter, living inside the list. Only the ICP-qualified leads then get verified emails found via Prospeo straight from the LinkedIn URL (Evaboot as fallback), so the variable cost lands on keepers. For people who have Sales Navigator.
 ---
 
 # Sales Nav lead builder
@@ -8,180 +8,213 @@ description: Turn a LinkedIn Sales Navigator search into a clean, ICP-scored lea
 ## What it does
 
 You have **LinkedIn Sales Navigator** — the sharpest targeting filters that
-exist. This skill turns a Sales Nav search into a clean, **ICP-scored** lead
-list in Nous, and spends email credits **only on the leads you actually keep**.
+exist. This skill turns a Sales Nav search into a **complete, ICP-scored** lead
+list in Nous, and spends email credits **only on the leads worth contacting.**
 
-The money model is the whole point. Finding and verifying emails is the variable
-cost, so we never spend it on junk company types or duplicates. We pay to pull
-the LinkedIn data, **filter and score for free inside Nous**, then pay to find
-emails only on the survivors.
+The core principle, learned the hard way on a real 1,205-lead run:
+
+> **You paid to extract every lead, so import every lead.** Never pre-filter
+> leads out of the list. Score all of them, label all of them, and let the
+> **ICP score be the filter inside Nous.** Deletion is the operator's manual
+> choice, never the skill's.
+
+The money model: **extraction** is the paid step you can't avoid (1 credit per
+lead). **Scoring, importing, and labelling are free** in Nous. **Email-finding**
+is the second paid step, and it runs only on the ICP-qualified keepers.
 
 ```
-Stage 1  EXTRACT (pay)   Evaboot, NO emails → LinkedIn data only.   1 credit / lead
-Stage 2  FILTER (free)   In Nous: exclude wrong company types → dedup → ICP-score
-Stage 3  EMAILS (pay)    Evaboot Email Finder, only on ICP-qualified net-new.
-                         1 credit / email found (misses are free)
-Stage 4  SAVE            Lead list, every lead tagged icp true/false, emails on
-                         the qualified ones, non-ICP kept and labelled
+Stage 1  EXTRACT (pay)   Evaboot, enrich_email="none" → LinkedIn data, NO emails.
+                         1 credit / lead, deducted on completion.
+Stage 2  SCORE (free)    Pull the Nous GTM profile → ICP-score EVERY lead 0–100.
+                         Evaboot's "Matches Filters" + the blocklist are SIGNALS,
+                         not gates. Dedup marks net_new — it does not drop.
+Stage 3  IMPORT (free)   Save ALL leads into one Nous list, each labelled
+                         icp / icp_score / icp_reason. Nothing discarded.
+Stage 4  EMAILS (pay)    Prospeo (off the LinkedIn URL) finds the verified email,
+                         ONLY on ICP-qualified net-new leads. 1 credit / email
+                         found (misses free). Evaboot Email Finder is the fallback.
 ```
 
 The flow: **Claude (structural search) → Sales Nav → Evaboot extract (no emails)
-→ Nous (exclude + dedup + score) → Evaboot emails on keepers → Nous list.**
+→ pull leads via API → Nous (score EVERYTHING) → import all → emails on keepers.**
 
 ## How to invoke
 
 `/sales-nav-builder` — or *"build me a list of outbound GTM agency founders from
 Sales Navigator."*
 
-## First-run setup (you, the agent, run this once as a short interview)
+## First-run setup (run once as a short interview)
 
-**1. LinkedIn Sales Navigator (required).** Confirm the user has a seat. Evaboot
-extracts live from their own Sales Nav search (no third-party database, which
-keeps it account-safe and GDPR-clean). No Sales Nav → point them to
-`lead-builder`.
+**1. LinkedIn Sales Navigator (required).** Confirm a seat. Evaboot scrapes
+**through your own connected Sales Nav session** — that is what keeps it
+account-safe and GDPR-clean. No Sales Nav → point them to `lead-builder`.
 
-**2. Evaboot (required) — extract + email finder.** Check for `EVABOOT_API_KEY`
-(dashboard → Integrations → API). It's credit-based: **1 credit to export a
-lead (no email), 1 more only when an email is found** (misses are free). From
-$9/mo.
+**2. Evaboot (required) — the extractor.** Check `EVABOOT_API_KEY`
+(dashboard → Settings → API). Then **verify the account is ready** with the free
+quota call — `has_valid_salesnav` MUST be `true`, or extraction will fail no
+matter how many credits exist:
+
+```bash
+curl -s "https://api.evaboot.com/v1/quota/" -H "Authorization: Bearer $EVABOOT_API_KEY"
+# → { "quota": { "has_valid_salesnav": true, "credits": 1500.0, ... } }
+```
+
+If `has_valid_salesnav` is `false` / `salesnavs: []`, the user must **connect
+their Sales Nav once**: install the Evaboot Chrome extension and sign in / run
+one export with the LinkedIn account that holds the Sales Nav seat. After that,
+the headless API works. This is a one-time connect, not a per-run step.
+
+**2b. Prospeo (required) — the email finder.** Check `PROSPEO_API_KEY` (used with
+an `X-KEY` header). Prospeo finds the verified email **directly from the LinkedIn
+URL**, so it needs no domain and covers leads Evaboot can't (no-domain ones). It
+is also cheaper per email (~$0.02 at volume vs ~$0.04–0.05 for Evaboot) and
+charges **only on a found email** (misses/errors are free — verified live). Quick
+balance check:
+
+```bash
+curl -s -X POST "https://api.prospeo.io/account-information" \
+  -H "X-KEY: $PROSPEO_API_KEY" -H "Content-Type: application/json" -d '{}'
+# → { "response": { "remaining_credits": N, ... } }
+```
+
+Evaboot's Email Finder stays available as a fallback for misses.
 
 **3. Nous — the ICP, dedup, and where the list lands (required).** Check
-`NOUS_API_KEY` (`pk_`), and connect the MCP for `get_gtm_profile`. Nous holds the
-**ICP / GTM context** the skill scores against, dedups the leads, and stores the
-list. The scoring itself runs in the skill (your Claude tokens), not on Nous.
+`NOUS_API_KEY` (`pk_`) and connect the MCP for `get_gtm_profile`. Nous holds the
+**ICP / GTM context** the skill scores against, dedups, and stores the list. The
+scoring runs in the skill (your Claude tokens), not on Nous.
 
 ---
 
 ## Phase 1 — Build the search: structural filters first, keywords second
 
 The biggest mistake is leading with keywords. Legacy local agencies and modern
-AI-native GTM agencies **both** say "lead generation" and "demand generation" —
-keywords can't separate them. **Structure can.** Build the search in this order:
+AI-native GTM agencies **both** say "lead generation" — keywords can't separate
+them. **Structure can.** Build the search in this order:
 
-**1. Years in current company ≤ 5 — the single biggest lever.** This instantly
-removes the 16-to-24-year-tenure legacy marketing, SEO, and design veterans and
-keeps the founders who started modern agencies. Lead with this.
+**1. Years in current company ≤ 5 — the single biggest lever.** Removes the
+16-to-24-year-tenure legacy marketing, SEO, and design veterans; keeps founders
+who started modern agencies.
 
 **2. Company headcount** — the size band from the saved ICP (e.g. 1–10).
 
 **3. The right industries — and the trap to avoid.** For modern AI-native GTM
-agencies, do **not** use **"Advertising Services"** — that is where the
-word-of-mouth, SEO, web-design, and branding shops live. The actual ICP founders
-are tagged under:
+agencies, do **not** use **"Advertising Services"** — that is the legacy
+word-of-mouth / SEO / web-design / branding trap. The real ICP founders are
+tagged under:
 > **Marketing Services · Business Consulting & Services · IT Services & IT
 > Consulting · Software Development · Technology, Information & Internet**
 
 **4. Seniority / title** — Founder, Co-founder, CEO, Owner.
 
-**5. Keywords — a FLAT POSITIVE `OR` list, modern vocabulary only.** This is the
-precision lever once structure is doing the separating. Use terms a 20-year
-word-of-mouth shop never uses:
-> `Clay OR Claude OR "AI-native" OR GTM OR "go-to-market" OR "AI SDR" OR RevOps
+**5. Keywords — a FLAT POSITIVE `OR` list, modern vocabulary only:**
+> `GTM OR "go-to-market" OR Clay OR Claude OR "AI-native" OR "AI SDR" OR RevOps
 > OR outbound OR "cold email"`
-
-Keep generic `lead generation` / `demand generation` only when the structural
-filters above are already separating legacy from modern.
 
 ### Hard keyword rule — never break this
 
 Sales Nav's keyword box **breaks on Boolean `NOT`.** A long `(...) AND NOT (...)`
-returns **0 results** every time, and even a short `(positives) NOT (negatives)`
-returns 0 when a leading paren is dropped on paste, a smart-quote sneaks in, or
-the box hits its length limit. **Never put exclusions in the keyword box.** Use a
-flat positive `OR` list only, and do *all* exclusion downstream in Stage 2.
+returns **0 results** every time. **Never put exclusions in the keyword box.**
+Flat positive `OR` only; all judgment happens downstream in Stage 2.
+
+### Optional — let Evaboot build the search URL for you
+
+`POST /v1/search-builder/` turns a natural-language description into a Sales Nav
+search URL with structural filters:
+
+```bash
+curl -s -X POST "https://api.evaboot.com/v1/search-builder/" \
+  -H "Authorization: Bearer $EVABOOT_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "description":"AI-native GTM / outbound agency founders, 1-10 employees, North America", "search_type":"LEAD" }'
+# → { "success":true, "url":"https://www.linkedin.com/sales/search/people?...", "filters_used":{...} }
+```
+
+Always have the user paste the URL into Sales Nav to **eyeball the result count**
+before extracting.
 
 ### The 2,500 export cap
 
-Sales Nav silently truncates any export at **2,500 leads** — a search returning
-3,000 loses 500 with no warning. If the preview count is above 2,500, tell the
-user to **tighten below it** (narrow the years band, headcount, or geography) so
-the pull is complete.
+Sales Nav silently truncates any export at **2,500 leads**. If the preview count
+is above 2,500, tell the user to tighten below it (years band, headcount,
+geography) so the pull is complete.
 
-### Cross-check the saved ICP
+## Phase 2 — Extract LEADS ONLY (no emails), then pull via API
+
+**Default to leads-only — `enrich_email:"none"`.** Emails are Stage 4, on keepers
+only. There are two ways to run Stage 1:
+
+**A. Headless API (preferred).** Trigger the extraction with the Sales Nav search
+URL — note the URL must be a `linkedin.com/sales/search/people?...` URL, not a
+regular search or profile URL:
+
+```bash
+curl -s -X POST "https://api.evaboot.com/v1/extractions/url/" \
+  -H "Authorization: Bearer $EVABOOT_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "linkedin_url":"https://www.linkedin.com/sales/search/people?query=...",
+        "search_name":"gtm-agency-founders", "enrich_email":"none" }'
+# → { "search_id":"...", "status":"...", "estimated_leads":N }
+```
+
+**B. Chrome extension.** The user runs the search in Sales Nav and clicks
+**Export with Evaboot** with email-finding **OFF**. This also registers/links
+their Sales Nav session for path A next time.
+
+**Either way, poll until done and pull the leads via the API** (no CSV handoff):
+
+```bash
+# list extractions to find the job + watch status (EXECUTING → EXECUTED)
+curl -s "https://api.evaboot.com/v1/extractions/" -H "Authorization: Bearer $EVABOOT_API_KEY"
+# then pull the full result set
+curl -s "https://api.evaboot.com/v1/extractions/<search_id>/" -H "Authorization: Bearer $EVABOOT_API_KEY"
+```
+
+Each lead carries rich firmographics: `First Name`, `Last Name`, `Current Job`,
+`Company Name`, `Company Domain`, `Company Industry`, `Company Description`,
+`Company Employee Range`, `Company Specialities`, `Years in Company`,
+`Linkedin URL Public`, `Email` (empty) — and Evaboot's own **`Matches Filters`**
+(`YES`/`NO`) + **`No Match Reasons`**.
+
+**Cost reality:** extraction costs **1 credit per lead, deducted on completion**
+(not mid-run, and not free). On a 1,205-lead pull that is ~1,205 credits. Check
+`/v1/quota/` first and tell the user the extraction cost up front.
+
+## Phase 3 — Score EVERY lead against the ICP (free, no credits)
+
+This stage runs **inside the skill** — you (Claude) read the workspace ICP and
+score every lead. **No Evaboot or Nous credits.** The rule that matters:
+
+> **Score everything. Drop nothing.** You paid to extract these leads; they all
+> go into the list. The ICP score is the filter, and it lives on the record.
+
+### 1. Pull the full ICP from the Nous GTM context (source of truth)
+
+Prefer the `get_gtm_profile` MCP tool; else:
 
 ```bash
 curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
   -H "Authorization: Bearer $NOUS_API_KEY"
 ```
 
-Aligned → say so. Diverges → surface it and ask before running.
+Use the *whole* profile: who they target, firmographics, signals/vocabulary,
+disqualifiers.
 
-## Phase 2 — Confirm the search and the two-stage cost, then run
+### 2. Treat Evaboot's "Matches Filters" and the blocklist as SIGNALS, not gates
 
-Show the search back, the volume (Sales Nav's result count, under 2,500), and the
-**two-stage** cost — making clear emails are charged only on survivors.
+Hard-won lesson: **`Matches Filters: NO` does NOT mean off-ICP.** It usually
+means the lead didn't literally contain the keyword string you typed — real
+RevOps / outbound / GTM founders hide in the `NO` pile. So:
 
-```
-Sales Nav search:
-  Years in company:  ≤ 5
-  Headcount:         1–10
-  Industries:        Marketing Services, Business Consulting, IT Services,
-                     Software Development, Technology & Internet
-                     (NOT Advertising Services)
-  Titles:            Founder / Co-founder / CEO / Owner
-  Keywords (flat OR): Clay OR Claude OR "AI-native" OR GTM OR "AI SDR" OR RevOps
-  Geo:               United States
+- Keep `Matches Filters` and `No Match Reasons` as **fields on the record**
+  (useful signal), but **never filter the list by them.**
+- The exclusion list (design, web design, SEO, branding, recruiting, staffing,
+  talent, headhunting, PR, social media management, etc.) is a **scoring
+  signal**, matched on **company identity (name + industry) with word
+  boundaries** — NOT a substring scan of the whole bio. A naive `in` check turns
+  "build**ui**ng" into a UI-design hit and "**design**ed" into a design hit, and
+  nukes most of your real leads. Use `\b<term>\b`. And even a real hit only
+  **lowers the score** — it does not remove the lead.
 
-Sales Nav shows ~1,300 results (under the 2,500 cap — complete pull).
-
-Stage 1 extract:  ~1,300 leads × 1 credit            = ~1,300 credits  (now)
-Stage 2 filter:   exclude wrong types + dedup + score = free
-Stage 3 emails:   ~850 ICP net-new × ~70% hit         = ~600 credits   (only on keepers)
-Total: ~1,900 credits  (vs ~2,200 to find emails on all 1,300 — and cleaner)
-Run it?
-```
-
-## Phase 3 — Extract LEADS ONLY (no emails), the credit-saver
-
-Default the export to **No Emails** (leads-only) — this is the documented
-default, because emails are Stage 3. Prefer Evaboot's **LinkedIn Extraction API**
-endpoint with the Sales Nav search URL and emails off; if you don't have API
-extraction wired, the user runs the search in Sales Nav and clicks **Export with
-Evaboot** with email-finding **off**, then hands you the leads-only file.
-
-Either way you get, per lead: `name`, `title`, `company`, `company_domain`,
-`linkedin_url` — **no email yet**. Cost: 1 credit per lead.
-
-## Phase 3.5 — Filter and score against the ICP (no Evaboot or Nous credits)
-
-This whole stage runs **inside the skill** — you (Claude) read the workspace's
-ICP and reason over every lead. It spends **no Evaboot credits and no Nous
-credits**; the only cost is the operator's own Claude tokens. That is by design:
-**Nous holds the ICP, the skill does the reasoning.** We never burn Nous credits
-scoring thousands of leads. (See "How ICP scoring works" below.)
-
-Do all three before spending a single email credit.
-
-### 1. Pull the full ICP from the Nous GTM context (the source of truth)
-
-The exclusion list is a fast first pass, but the **real** judge is the
-workspace's own ICP model — already built and maintained in the GTM context.
-Fetch it first, and use the *whole* thing (who we target, the firmographics, the
-signals/vocabulary, the disqualifiers):
-
-```bash
-# the GTM profile / ICP — same data as the get_gtm_profile MCP tool
-curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
-  -H "Authorization: Bearer $NOUS_API_KEY"
-```
-
-If the Nous MCP is connected, prefer the `get_gtm_profile` tool — it returns the
-ICP scorecard and context directly. **This profile is what makes scoring
-reliable for company types the exclusion list never anticipated** (see step 3).
-
-### 2. Exclude the obvious wrong company types (fast deterministic pass)
-
-Drop leads whose **company name or description** centres on a non-ICP business.
-Match on the company's *identity*, not a stray profile mention, so a real GTM
-agency that says "marketing" once isn't nuked. This default list is **editable**
-— it is a convenience, not the source of truth:
-
-> design · web design · web development · website · graphic · UX/UI · SEO ·
-> search engine · branding · logo · creative · recruiting · staffing ·
-> recruitment · talent · headhunting · executive search · word of mouth ·
-> PR · public relations · social media management · digital marketing
-
-### 3. Dedup by domain — Nous (free)
+### 3. Dedup by domain — marks, does not drop
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
@@ -189,163 +222,178 @@ curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
   -d '{ "domains": ["acme.com","beta.io"] }'
 ```
 
-Keep `status === 'net_new'` — no point paying for emails on leads already in the
-pipeline.
+Keep `status` on the record. `net_new` leads are the ones worth paying emails
+for in Stage 4; already-known leads still stay in the list, just skipped for
+email spend.
 
-### 4. ICP-score every surviving lead against the GTM profile
+### 4. ICP-score every lead 0–100 against the GTM profile
 
-For each remaining lead, judge its **company** against the ICP you pulled in step
-1 and write three values into the lead's `fields`:
+For **every** lead write into `fields`:
+- `icp`: `true | false` — `icp_score >= threshold` (default 65).
+- `icp_score`: `0–100`.
+- `icp_reason`: one short sentence citing what matched or missed.
 
-- `icp`: `true | false` — does this company match the ICP?
-- `icp_score`: `0–100` — how strong the fit is.
-- `icp_reason`: one short sentence — *why*, citing what matched or missed.
+A sensible rubric (combine with judgment): base ~35; **+** for GTM / go-to-market
+/ RevOps / outbound / cold-email / SDR / AI-native signals in headline + company
+description + title; **+** for founder/owner title and small headcount (≤10);
+**−** for off-ICP industries (healthcare, construction, CPG, real estate, PE/M&A,
+education, recruiting, design) and large headcount. Score against the **positive
+ICP**, not just the blocklist — a company nobody listed still scores low when it
+plainly doesn't fit.
 
-Score against the **positive ICP definition**, not just the blocklist. A company
-that isn't on the exclusion list but clearly isn't a GTM agency (say an event
-agency, a tax firm) still scores low because it doesn't match the profile. That
-is the reliability: **the blocklist catches the known junk, the ICP profile
-catches everything else.** Only `icp: true` leads proceed to Stage 3 emails;
-`icp: false` leads are kept in the list, labelled with their score and reason.
+## Phase 4 — Import ALL leads into one Nous list, labelled
 
-## Phase 4 — Find emails on keepers, save the ICP-segmented list
+Create the list, declare the columns, then insert **every** lead in batches
+(~400/insert). Emails are empty here — they come in Stage 4 for keepers only.
 
-### Find emails — Evaboot Email Finder, ICP-qualified net-new only
+```bash
+# 1. create the list — response carries id AND workspace_id:
+curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "name":"Sales Nav · GTM founders · 1-10 · NA", "source":"sales_nav" }'
+# → { "lead_list": { "id":"<LIST_ID>", "workspace_id":"<WS>", ... } }
+
+# 2. declare columns (PATCH REQUIRES workspaceId in body):
+curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "workspaceId":"<WS>", "columns":[
+        {"key":"icp","label":"ICP"}, {"key":"icp_score","label":"ICP score"},
+        {"key":"icp_reason","label":"Why"}, {"key":"title","label":"Title"},
+        {"key":"industry","label":"Industry"}, {"key":"company_size","label":"Size"},
+        {"key":"evaboot_match","label":"Evaboot match"} ] }'
+
+# 3. insert EVERY lead, batched ~400 at a time:
+curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "workspaceId":"<WS>", "importDuplicates": true, "leads": [
+        { "name":"Jane Doe", "linkedin_url":"https://www.linkedin.com/in/janedoe",
+          "company":"Acme",
+          "fields": { "title":"Founder", "icp": true, "icp_score": 86,
+                      "icp_reason":"AI-native GTM agency, 1-10, NA — core ICP",
+                      "industry":"Software Development", "company_size":"2 to 10",
+                      "evaboot_match":"NO", "source":"sales_nav" } } ] }'
+```
+
+Notes from the live run:
+- **Use `importDuplicates: true`** when you intend a complete list — otherwise
+  leads that are already workspace contacts get silently skipped, and you lose
+  rows you meant to keep.
+- **Resolution is asynchronous and scales with size.** ~90 leads settle in
+  ~30–60s; ~1,200 leads take several minutes. Reading back immediately shows
+  empty `name`/`fields` and `status:"pending"` — that is mid-resolution, NOT a
+  failure. Tell the operator the list fills in over a few minutes.
+- **The read endpoint pages at ~1,000 leads.** To verify a larger list, page
+  with an offset; don't report "missing leads" from a single page.
+
+## Phase 5 — Find emails on the ICP keepers (Prospeo), then write back
+
+Only now, and only on **ICP-qualified, net-new keepers** (`icp:true` + `net_new`).
+
+**Primary — Prospeo, off the LinkedIn URL.** No domain needed, so it covers every
+keeper including the ones with no company domain:
+
+```bash
+curl -s -X POST "https://api.prospeo.io/enrich-person" \
+  -H "X-KEY: $PROSPEO_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "data": { "linkedin_url": "https://www.linkedin.com/in/janedoe" } }'
+# → { "response": { "person": { "email": { "email": "...", "status": "VALID" } },
+#                   "company": { "name": "...", "domain": "...", "employee_count": N } } }
+```
+
+Read `response.person.email.email` (+ `.status`); `response.company` also returns
+domain / employee count / industry you can backfill onto the record. Charged
+**1 credit per email found** (misses & errors are free).
+
+**Throttle it.** Prospeo's lower tiers rate-limit hard (HTTP 400
+`"Rate limit exceeded"`). Sleep ~9–12s between calls and retry on rate-limit with
+backoff — exactly the pattern in the operator's `enrich.py`. Check
+`remaining_credits` before the run and warn if the keeper count exceeds it.
+
+**Fallback — Evaboot Email Finder** for Prospeo misses, when the lead has a
+domain:
 
 ```bash
 curl -s -X POST "https://api.evaboot.com/v1/email-finder/" \
   -H "Authorization: Bearer $EVABOOT_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "prospects": [
-        { "first_name":"Jane","last_name":"Doe",
-          "company_name":"Acme","company_domain":"acme.com" } ] }'
+  -d '{ "job_name":"gtm-keepers",
+        "prospects": [ { "first_name":"Jane","last_name":"Doe",
+                         "company_name":"Acme","company_domain":"acme.com" } ] }'
 ```
 
-Charged 1 credit per email **found** (misses are free). Hit rate runs ~60–80%.
+Patch the found emails back onto those leads' records (PATCH each lead, or include
+`email` on a re-insert). Then point the user at `campaign-writer` for the
+ICP-qualified segment.
 
-### Save the list — every lead tagged, non-ICP kept
+**Pause for approval before this stage** — it is the variable spend. Show the
+keeper count and the credit estimate, and confirm Prospeo has enough credits
+(its free tier is ~100/mo and does not roll over).
 
-Create the list, declare the `icp` columns so they show and filter in the Nous
-UI, then insert **all** surviving net-new leads. ICP-qualified leads carry their
-found email; non-ICP leads are saved **leads-only, no email spend**, flagged:
+## How ICP scoring works (and who pays)
 
-```bash
-# 1. create the list — the response carries BOTH the id AND the workspace_id:
-#    { "lead_list": { "id": "<LIST_ID>", "workspace_id": "<WS>", ... } }
-#    Capture both. The API key alone authorizes this (no workspaceId in body).
-curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
-  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "name": "Founder · GTM agencies · 1–10 · US", "source": "sales_nav" }'
-
-# 2. declare the display columns (icp + icp_score → filterable ICP vs non-ICP).
-#    This PATCH REQUIRES workspaceId in the body — use the <WS> from step 1.
-curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
-  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "workspaceId": "<WS>",
-        "columns": [ {"key":"title","label":"Title"},
-                     {"key":"icp","label":"ICP"},
-                     {"key":"icp_score","label":"ICP score"},
-                     {"key":"icp_reason","label":"Why"} ] }'
-
-# 3. insert every surviving net-new lead (email only on the ICP-qualified ones).
-#    The API key authorizes this — no workspaceId needed in the body.
-curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
-  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "leads": [
-        { "name":"Jane Doe", "email":"jane@acme.com",
-          "linkedin_url":"https://www.linkedin.com/in/janedoe", "company":"Acme",
-          "fields": { "title":"Founder", "icp": true, "icp_score": 86,
-                      "icp_reason":"AI-native GTM agency on Clay, 1–10, US — core ICP",
-                      "source":"Sales Nav lead builder", "enriched_by":"evaboot" } },
-        { "name":"Bob Legacy", "company":"OldSEO Co",
-          "linkedin_url":"https://www.linkedin.com/in/boblegacy",
-          "fields": { "title":"Owner", "icp": false, "icp_score": 22,
-                      "icp_reason":"SEO/web-design shop, not a GTM agency",
-                      "source":"Sales Nav lead builder" } } ] }'
-```
-
-The list is now filterable **ICP vs non-ICP** — you see the qualified core with
-emails, and the rest you also pulled, leads-only, with a score and a reason,
-without losing them. In the Nous list the operator can review the non-ICP rows
-and **delete** any that are truly junk, or keep one that was misjudged. That
-keeps the ICP definition inspectable and tightenable against real pulled data.
-
-**Expect a short delay.** Leads land immediately, but Nous resolves them in the
-background, so names and the `icp` tags fill in **a few seconds (~10s) after the
-insert** — tell the operator the list will populate shortly, don't report it as
-empty. Then point the user at `campaign-writer` for the ICP-qualified segment.
-
-## How ICP scoring works (and who pays) — read this
-
-Full transparency on the mechanism, because it is the heart of the skill:
-
-1. **The ICP lives in Nous, in the GTM context.** Nous already holds the full
-   ICP model — firmographics, target signals, vocabulary, disqualifiers — built
-   and maintained on the GTM Context page. The skill does **not** invent an ICP;
-   it reads yours (`get_gtm_profile` / `GET /v2/workspace/facts?categories=ICP,Market`).
-2. **The skill (Claude) does the reasoning.** Scoring each lead against that ICP
-   is an LLM judgment, and it runs **in the skill, on the operator's own Claude
-   tokens.** Nous is never asked to score thousands of leads, so **we never burn
-   Nous credits on it.** The split is deliberate: *Nous stores the ICP, the skill
-   reasons with it.*
-3. **Reliability comes from the positive ICP, not the blocklist.** The exclusion
-   list is a fast first pass for known junk (SEO, design, recruiting shops). Every
-   other company is judged against the *positive* ICP definition, so a company
-   type nobody listed still gets a correct low score when it doesn't fit. The
-   blocklist handles the obvious; the ICP profile handles the unknown.
-4. **Nothing is deleted automatically — it is a control step.** Every lead is
-   kept and labelled `icp` / `icp_score` / `icp_reason`. The operator reviews in
-   the Nous list, filters ICP vs non-ICP, and deletes rows by hand. A misjudged
-   lead is never lost; a confirmed-junk lead can be removed.
-
-This same logic applies to **any bulk set** the skill scores — it reads the GTM
-profile once, then scores the whole batch against it before any email spend.
+1. **The ICP lives in Nous, in the GTM context.** The skill reads yours; it does
+   not invent one.
+2. **The skill (Claude) does the reasoning**, on the operator's own tokens. Nous
+   is never asked to score thousands of leads, so no Nous credits are burned.
+3. **Reliability comes from the positive ICP, not the blocklist.** The blocklist
+   and Evaboot's match flag are signals that nudge the score; the positive ICP
+   definition is what actually judges fit.
+4. **Nothing is dropped or auto-deleted.** Every lead is imported and labelled.
+   The operator filters ICP vs non-ICP in the list and deletes by hand. A
+   misjudged lead is never lost; this is also how you tighten the ICP against
+   real pulled data over time.
 
 ## Hard rules — never break these
 
-- **Structural filters first.** Years-in-company ≤ 5, headcount, the right
-  industries — keywords are secondary.
-- **Flat positive `OR` keywords only.** Never put exclusions in the Sales Nav
-  keyword box; it returns 0 results. All exclusion happens in Stage 2.
+- **Import every lead you extracted.** You paid for it. Never pre-filter leads
+  out of the list — the ICP score is the filter, and it lives inside Nous.
+- **`Matches Filters: NO` is not off-ICP.** It's a signal, not a gate. Score and
+  import those leads too.
+- **Blocklist matches company identity with word boundaries, and only lowers the
+  score** — it never removes a lead.
+- **Structural filters first** in the search; flat positive `OR` keywords only;
+  never Boolean `NOT` in the keyword box.
 - **Not "Advertising Services"** for modern agencies — it's the legacy trap.
 - **Warn at the 2,500 export cap.** Tighten below it for a complete pull.
-- **Extract leads-only first.** Emails are Stage 3, on keepers only — never pay
-  to find emails on junk types or duplicates.
-- **Score against the GTM profile, not a guess.** Pull the ICP from Nous first
-  (`get_gtm_profile`); the blocklist is only a first pass.
-- **The skill never auto-deletes.** It keeps and labels every lead (`icp` /
-  `icp_score` / `icp_reason`); deletion is the operator's manual control step in
-  the Nous list, so a misjudged lead is never lost.
-- **Stamp the lead source.** Highly recommended: set `fields.source` to
-  `"Sales Nav lead builder"` on every lead, so reply rates can be compared across
-  lead sources later (this skill vs Apollo vs inbound vs LinkedIn engagers).
+- **Extract leads-only (`enrich_email:"none"`) first;** emails are Stage 4, on
+  ICP-qualified keepers only. Check `/v1/quota/` and surface the extraction cost
+  before running.
+- **The skill never auto-deletes.** Deletion is the operator's manual control.
 
 ## Customize / Set up
 
-- **Tune the structural filters** — the years cap, headcount band, industries,
-  titles.
-- **Edit the exclusion list** — it's the default above, adjust per niche.
-- **Set the ICP threshold** — the `icp_score` cutoff that gates email spend.
-- **Swap the extractor** — Evaboot is the default; any Sales Nav export tool that
+- **Tune the structural filters** — years cap, headcount, industries, titles.
+- **Set the ICP threshold** — the `icp_score` cutoff (default 65) that flags
+  `icp:true` and gates Stage 4 email spend.
+- **Edit the blocklist signals** — adjust per niche; they nudge the score.
+- **Swap the extractor** — Evaboot is the default; any Sales Nav export that
   returns leads-only works.
+- **Swap the email finder** — Prospeo (off the LinkedIn URL) is the default and
+  the cheapest; Evaboot Email Finder is the built-in fallback for misses.
 
-## Frequently asked questions
+## FAQ
+
+**Why import the non-ICP leads instead of dropping them?**
+Because you paid to extract every one of them, and `Matches Filters: NO` hides
+real ICP leads. Importing all of them, scored and labelled, keeps the list
+complete and filterable, costs zero email credits on the non-keepers, and lets
+you tighten your ICP against real data. Deletion is your manual choice.
 
 **Why extract without emails first?**
-Emails are the variable cost. Pulling LinkedIn data is unavoidable, but finding
-emails on junk company types or duplicates is pure waste. So we extract leads
-only, filter and score for free in Nous, and pay for emails on survivors. On a
-~1,300-lead run that's ~1,900 credits instead of ~2,200, and a cleaner list.
-
-**Why keep non-ICP leads instead of deleting them?**
-So the list stays filterable and you keep visibility into what you pulled. It
-also lets you inspect and tighten your ICP definition against real data over
-time. Non-ICP leads cost no email credits — they sit leads-only and flagged.
+Emails are the variable cost. Finding emails on leads you won't contact is waste.
+Extract leads-only, score everyone for free in Nous, and pay for emails only on
+ICP-qualified keepers.
 
 **What if I don't have Sales Navigator?**
-Use `lead-builder` — same job from Apollo's people search with Claude building
-the targeting, no Sales Nav needed.
+Use `lead-builder` — same job from Apollo's people search, no Sales Nav needed.
 
 **What does it cost?**
-Sales Nav (which you have) plus Evaboot credits: 1 per lead extracted, 1 per
-email found (misses free). The exclusion, dedup, and ICP scoring are free in
-Nous, and email credits are spent only on ICP-qualified net-new leads.
+Two providers. **Evaboot** for extraction: 1 credit per lead extracted (deducted
+on completion). **Prospeo** for emails: 1 credit per email found off the LinkedIn
+URL (misses free, ~$0.02 at volume), Evaboot Email Finder as fallback. Scoring,
+dedup, and import are free in Nous. Email credits are spent only on ICP-qualified
+net-new keepers.
+
+**Why Prospeo for emails instead of Evaboot?**
+It finds the email straight from the LinkedIn URL (no domain needed, so it covers
+no-domain keepers too), it's ~2× cheaper per verified email, and it returns
+company firmographics you can backfill. Evaboot stays as the fallback on misses.

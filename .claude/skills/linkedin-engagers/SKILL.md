@@ -1,6 +1,6 @@
 ---
 name: linkedin-engagers
-description: From one or more LinkedIn creators' profile URLs, scrape the commenters AND reactors on their recent posts via Apify HarvestAPI, dedupe them, and score every one against your Nous ICP (icp / score / reason, keeping both fit and non-fit, labelled). It then finds verified emails on the ICP-qualified ones by their LinkedIn URL — so you still get the email even when the scraped company is wrong — and saves the ICP-segmented list into both Nous and a Google Sheet, with every engagement recorded as a public signal. Use to turn a creator's audience into a high-intent, ICP-scored outbound list, or refresh it on a schedule.
+description: From one or more LinkedIn creators' profile URLs, scrape the commenters AND reactors on their recent posts via Apify HarvestAPI, dedupe them, and score every one against your Nous ICP (icp / score / reason, keeping both fit and non-fit, labelled). It then finds verified emails on the ICP-qualified ones by their LinkedIn URL — so you still get the email even when the scraped company is wrong — and saves the ICP-segmented list into Nous as a lead list, with every engagement recorded as a public signal. Use to turn a creator's audience into a high-intent, ICP-scored outbound list, or refresh it on a schedule.
 ---
 
 # High-intent LinkedIn scraper
@@ -10,15 +10,14 @@ description: From one or more LinkedIn creators' profile URLs, scrape the commen
 You give it one or more LinkedIn creators' profile URLs. It scrapes the people
 who **commented** and **reacted** on their posts from the last **two weeks**,
 dedupes them against your pipeline, scores each one against your **Nous ICP**,
-and saves the clean, high-fit list into **both Nous (as a lead list) and a
-Google Sheet** — with every engagement recorded on each person as a public
-signal.
+and saves the clean, high-fit list into **Nous as a lead list** — with every
+engagement recorded on each person as a public signal.
 
 These are warm leads by definition: they showed up for the content. Pointed at
 the right creators every two weeks, this is a steady source of in-market,
 on-ICP prospects with the source of the signal traced on every record.
 
-The flow: **Apify → Claude (ICP score) → Prospeo (email on keepers) → Nous → Google Sheet.**
+The flow: **Apify → Claude (ICP score) → Prospeo (email on keepers) → Nous.**
 
 ## How to invoke
 
@@ -30,7 +29,6 @@ The skill will ask for what it needs:
 - **LinkedIn profile URLs** of the creators (`https://www.linkedin.com/in/<slug>/`).
 - **Window in days** (default `14`, two weeks; widen to `21` for three weeks).
 - **List name** (default `<creator-slug> · <YYYY-WW>`).
-- **Google Sheet** to mirror into (a `GOOGLE_SHEET_ID`, optional).
 - At the end: **outbound tool** to push to (HeyReach / Smartlead / none).
 
 ## First-run setup (you, the agent, run this once as a short interview)
@@ -54,10 +52,9 @@ from each person's LinkedIn URL, which also fixes the company name. Add
 `export PROSPEO_API_KEY=...` (prospeo.io) to get emails; without it the list
 saves leads-only."
 
-**4. Optional outputs.** Only if they want them: mirror to a sheet
-(`export GOOGLE_SHEET_ID=1AbC...`, plus `gcloud auth login` once) or push to
-outbound (`export HEYREACH_API_KEY=...` for LinkedIn, `SMARTLEAD_API_KEY` for
-email).
+**4. Optional outbound.** Only if they want to push the finished list onward:
+`export HEYREACH_API_KEY=...` for LinkedIn outreach, `SMARTLEAD_API_KEY` for
+email.
 
 Then confirm the creators and the window before spending.
 
@@ -389,9 +386,9 @@ resolves them in the background, so names and the `icp` tags fill in ~10s after
 insert** — tell the operator the list populates shortly, don't report it empty.
 
 **If steps 9 or 10 fail (non-2xx), do not abort the run.** Warn the operator,
-then continue to steps 11-13 so the engagements are still recorded as public
-signals and written to the Google Sheet. The lead list is recoverable; the
-scraped engagers are not worth re-paying Apify for.
+then continue to steps 11-12 so the engagements are still recorded as public
+signals. The lead list is recoverable; the scraped engagers are not worth
+re-paying Apify for.
 
 ### 11. Record every engagement as a public signal
 
@@ -426,35 +423,14 @@ curl -s -X POST "https://api.opennous.cloud/v2/observations" \
 - `external_id` is what makes reruns safe — Nous skips a duplicate observation
   on the same `(source, external_id)`.
 
-### 12. Mirror the list into a Google Sheet (optional)
-
-If `GOOGLE_SHEET_ID` is set, append the same high-fit leads as rows so the team
-has them in a sheet too. Append with the Sheets API using a short-lived token
-from `gcloud auth print-access-token` (the operator must have run
-`gcloud auth login` once):
-
-```bash
-curl -s -X POST \
-  "https://sheets.googleapis.com/v4/spreadsheets/$GOOGLE_SHEET_ID/values/Leads!A1:append?valueInputOption=USER_ENTERED" \
-  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-  -H "Content-Type: application/json" \
-  -d '{ "values": [
-        ["<name>", "<linkedin_url>", "<title>", "<company>", "<icp_fit>", "<creator_url>", "<observed_at>"]
-      ] }'
-```
-
-If a Google Sheets MCP connector is attached instead, use it. If neither is
-available, write a local `engagers-<list>.csv` and tell the operator where it
-is. Never block the run on the sheet step.
-
-### 13. Update state — mark posts as mined
+### 12. Update state — mark posts as mined
 
 After all observations are written for a post, add its normalized URL to
 `state.json` with `now()`. **Only update state after the post's engagers are
 successfully recorded** — never mark a post mined when the call failed
 halfway through.
 
-### 14. Push to an outbound tool (optional)
+### 13. Push to an outbound tool (optional)
 
 Ask the operator:
 
@@ -464,8 +440,7 @@ Ask the operator:
   leads to a campaign or list. Ask for the campaign/list id; key in
   `HEYREACH_API_KEY`.
 - **Smartlead** (email): `POST https://server.smartlead.ai/api/v1/campaigns/{campaignId}/leads?api_key=$SMARTLEAD_API_KEY`. Ask for `campaignId`.
-- **Other / none**: stop. The list is in Nous and the sheet; the operator
-  handles export.
+- **Other / none**: stop. The list is in Nous; the operator handles export.
 
 For tools without an env var set, ask the operator to set it and re-run that
 step only — never abort the whole run.
@@ -474,10 +449,10 @@ To reach out over **both LinkedIn and email**, add an email-find step before
 this one (an enrichment provider or the Nous record's email) and push to
 HeyReach for LinkedIn and Smartlead for email.
 
-### 15. Summarise
+### 14. Summarise
 
 ```
-List "<name>" created in Nous and mirrored to the sheet.
+List "<name>" created in Nous.
 Creators: <C>. Mined: <P> posts (skipped <S> already-mined, <Y> too young, <O> out of window)
 Apify spend: <C> + <P>*2 paid runs
 Engagers: <total>, deduped to <unique>
@@ -569,10 +544,11 @@ profile URL** — which you do have reliably — to a LinkedIn-native finder
 together with the real company and domain. It only does this for the
 ICP-qualified people, so you don't pay to enrich the off-ICP ones.
 
-**Why save into both Nous and a Google Sheet?**
-Nous is the resolved record the rest of your stack reads from. The sheet is for
-the humans who want to eyeball or hand the list to a teammate. Both get the
-same ICP-scored leads.
+**Where does the list end up?**
+In Nous, as a lead list, with every engager ICP-scored and labelled and every
+engagement recorded as a public signal on the person's record. The list filters
+ICP vs non-ICP in the Nous UI, and the rest of your stack reads from the same
+resolved record.
 
 **Will it create duplicates of people I already have in Nous?**
 No. The bulk-upload endpoint matches on email and normalized `linkedin_url`

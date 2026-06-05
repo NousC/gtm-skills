@@ -215,11 +215,26 @@ DELIVERABLE emails skip this step.
 
 ### 5. Save to a Nous lead list
 
+Create the list. The response carries both the `id` and the `workspace_id` —
+capture both, the column PATCH needs the `workspace_id`.
+
 ```bash
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "name": "Founder · outbound GTM agencies · 1–10 · US", "source": "lead_builder" }'
+# → { "lead_list": { "id": "<LIST_ID>", "workspace_id": "<WS>", ... } }
 
+# Declare the columns so the enriched fields show in the Nous list UI.
+# Name, Email, Company and LinkedIn are fixed columns; these surface the rest.
+# This PATCH REQUIRES workspaceId in the body — use the <WS> above.
+curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "workspaceId": "<WS>", "columns": [
+        {"key":"title","label":"Title"}, {"key":"niche","label":"Niche"},
+        {"key":"matched_on","label":"Match"}, {"key":"enriched_by","label":"Source"} ] }'
+
+# Insert the leads. The custom values live in `fields`. workspaceId is optional
+# on this call (the API key scopes the workspace).
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "leads": [
@@ -229,8 +244,9 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
                       "matched_on":"keywords", "enriched_by":"fullenrich" } } ] }'
 ```
 
-Insert as they verify so the list fills in live. Then point the user at
-`campaign-writer`.
+Insert as they verify so the list fills in live. Leads land immediately but Nous
+resolves them in the background, so names fill in a few seconds after insert.
+Then point the user at `campaign-writer`.
 
 ## Hard rules — never break these
 
