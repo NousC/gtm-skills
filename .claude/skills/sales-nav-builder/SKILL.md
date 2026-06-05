@@ -229,9 +229,11 @@ email spend.
 ### 4. ICP-score every lead 0–100 against the GTM profile
 
 For **every** lead write into `fields`:
-- `icp`: `true | false` — `icp_score >= threshold` (default 65).
-- `icp_score`: `0–100`.
-- `icp_reason`: one short sentence citing what matched or missed.
+- `icp`: `true | false` — `icp_score >= threshold` (default 40). Kept in fields
+  for the list's ICP filter; it is NOT a visible column.
+- `icp_score`: `0–100`. This is the single visible **ICP** column.
+- `icp_reason`: one short sentence citing what matched or missed. Stored in
+  fields for reference; NOT a visible column.
 
 A sensible rubric (combine with judgment): base ~35; **+** for GTM / go-to-market
 / RevOps / outbound / cold-email / SDR / AI-native signals in headline + company
@@ -254,11 +256,14 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists" \
 # → { "lead_list": { "id":"<LIST_ID>", "workspace_id":"<WS>", ... } }
 
 # 2. declare columns (PATCH REQUIRES workspaceId in body):
+# ONE ICP column only — the SCORE, labelled "ICP". Do NOT declare separate
+# "icp" (true/false) or "icp_reason" ("Why") columns. `icp` + `icp_reason` still
+# go in each lead's `fields` below (icp drives the list's ICP filter); they just
+# aren't shown as columns. The score is what you read; the 40+ threshold filters.
 curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "workspaceId":"<WS>", "columns":[
-        {"key":"icp","label":"ICP"}, {"key":"icp_score","label":"ICP score"},
-        {"key":"icp_reason","label":"Why"}, {"key":"title","label":"Title"},
+        {"key":"icp_score","label":"ICP"}, {"key":"title","label":"Title"},
         {"key":"industry","label":"Industry"}, {"key":"company_size","label":"Size"},
         {"key":"evaboot_match","label":"Evaboot match"} ] }'
 
@@ -362,7 +367,7 @@ keeper count and the credit estimate, and confirm Prospeo has enough credits
 ## Customize / Set up
 
 - **Tune the structural filters** — years cap, headcount, industries, titles.
-- **Set the ICP threshold** — the `icp_score` cutoff (default 65) that flags
+- **Set the ICP threshold** — the `icp_score` cutoff (default 40) that flags
   `icp:true` and gates Stage 4 email spend.
 - **Edit the blocklist signals** — adjust per niche; they nudge the score.
 - **Swap the extractor** — Evaboot is the default; any Sales Nav export that
