@@ -174,7 +174,12 @@ Seeding from example companies? First pull *their* profile
 (`mixed_companies/search` on the seed domains) to read the industry/keywords,
 then feed those into the people search above.
 
-### 2. Dedup by domain — Nous (free, before you spend)
+### 2. Dedup — Nous (free, before you spend)
+
+Two free passes. The second one decides **buy vs re-enrich vs reuse** per person —
+this is where you stop paying to re-acquire people you already own.
+
+**Company gate (domains):** drop companies you already have anyone at.
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
@@ -182,12 +187,33 @@ curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
   -d '{ "domains": ["acme.com","beta.io","gamma.co"] }'
 ```
 
-Keep only `status === 'net_new'`. You never pay to reveal an email for a company
-you already have.
+**Person gate (linkedin_urls)** — Apollo returns each person's `linkedin_url` for
+free in the preview. Dedup on those and route by the response:
+
+```bash
+curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "linkedin_urls": ["https://linkedin.com/in/jane-doe", "..."] }'
+```
+
+The `summary` gives you the counts up front (`net_new`, `needs_enrichment`,
+`reusable`). Route each person:
+
+- **`net_new`** → reveal the email below (you pay). The only bucket that costs money.
+- **`needs_enrichment`** (you own them, `stale:true` — not enriched in 90 days) →
+  **do NOT reveal.** Add them to the Nous list (they resolve onto the existing
+  record) and re-enrich through Nous — it reuses the identity and refreshes the
+  email far cheaper than a fresh FullEnrich reveal.
+- **`reusable`** (`stale:false` + `email_status` set) → **do NOT reveal.** You
+  already have a fresh verified email; just add them to the list.
+- **`engaged` / `recent`** → skip; don't cold-touch someone mid-conversation.
+
+So the verified-email spend lands only on `net_new` — never on a person you
+already have fresh, and never re-buying one you could just re-enrich.
 
 ### 3. Reveal the email — FullEnrich waterfall (charge-on-found)
 
-For each net-new person, reveal the email through the waterfall — it
+For each **`net_new`** person (only), reveal the email through the waterfall — it
 cross-sources 20+ providers and returns a deliverability status, which is more
 trustworthy than any single source.
 
@@ -231,16 +257,17 @@ curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
   -d '{ "workspaceId": "<WS>", "columns": [
         {"key":"title","label":"Title"}, {"key":"niche","label":"Niche"},
-        {"key":"matched_on","label":"Match"}, {"key":"enriched_by","label":"Source"} ] }'
+        {"key":"matched_on","label":"Match"}, {"key":"enriched_by","label":"Enriched by"} ] }'
 
-# Insert the leads. The custom values live in `fields`. workspaceId is optional
-# on this call (the API key scopes the workspace).
+# Insert the leads. `source` (top level) stamps the system Source column on every
+# lead in the batch — that's the lead source, separate from the outreach channel.
+# Custom values live in `fields`. workspaceId is optional (the API key scopes it).
 curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "leads": [
+  -d '{ "source": "Lead-list builder",
+        "leads": [
         { "name":"Jane Doe", "email":"jane@acme.com", "company":"Acme",
           "fields": { "title":"Founder", "niche":"outbound GTM agency",
-                      "source":"Lead-list builder",
                       "matched_on":"keywords", "enriched_by":"fullenrich" } } ] }'
 ```
 
@@ -253,12 +280,14 @@ Then point the user at `campaign-writer`.
 - **Build the spec first.** Never run a vague brief — Phase 1 is the product. A
   rich, multi-variant query is what makes the list targeted and reliable.
 - **Cost and approval before any reveal.** Phase 2 shows the estimate and waits.
-- **Dedup before you reveal.** Run `/v2/dedup`; reveal only `net_new`.
+- **Dedup before you reveal.** Run `/v2/dedup`; reveal only `net_new`. Re-enrich
+  `needs_enrichment` and reuse `reusable` — never re-buy a person you already own.
 - **Never guess an email.** Unverifiable contacts are flagged, not invented.
 - **Name the list from the ICP** and tell the user where to find it.
-- **Stamp the lead source.** Highly recommended: set `fields.source` to
-  `"Lead-list builder"` on every lead, so reply rates can be compared across lead
-  sources later (this skill vs Sales Nav vs inbound vs LinkedIn engagers).
+- **Stamp the lead source.** Pass `"source": "Lead-list builder"` at the top level
+  of the insert — it fills the system Source column on every lead, so reply rates
+  can be compared across lead sources later (this skill vs Sales Nav vs inbound vs
+  LinkedIn engagers). Source is a permanent column; don't put it in `fields`.
 
 ## Customize / Set up
 

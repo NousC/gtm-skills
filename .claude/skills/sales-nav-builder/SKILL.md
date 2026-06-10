@@ -214,17 +214,27 @@ RevOps / outbound / GTM founders hide in the `NO` pile. So:
   nukes most of your real leads. Use `\b<term>\b`. And even a real hit only
   **lowers the score** — it does not remove the lead.
 
-### 3. Dedup by domain — marks, does not drop
+### 3. Dedup — marks, does not drop
+
+Dedup against Nous before you spend a cent on emails. Evaboot gives you a
+`linkedin_url` per lead, so check per-person — that's what splits "buy" from
+"re-enrich" from "reuse":
 
 ```bash
 curl -s -X POST "https://api.opennous.cloud/v2/dedup" \
   -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "domains": ["acme.com","beta.io"] }'
+  -d '{ "linkedin_urls": ["https://www.linkedin.com/in/jane-doe", "..."] }'
 ```
 
-Keep `status` on the record. `net_new` leads are the ones worth paying emails
-for in Stage 4; already-known leads still stay in the list, just skipped for
-email spend.
+Keep `status` AND the coverage fields (`stale`, `email_status`, `enriched_at`) on
+each record — they gate Stage 5 spend, they do NOT drop anyone. Everyone still
+enters the list and gets ICP-scored.
+- `net_new` → find the email in Stage 5 (if ICP-qualified).
+- `needs_enrichment` (you own them, `stale:true` — not enriched in 90 days) →
+  Stage 5 Prospeo call still runs; it *re-verifies* the stale email rather than
+  buying a brand-new one.
+- `reusable` (`stale:false` + `email_status` set) → you already have a fresh
+  verified email; **skip the Prospeo call entirely** in Stage 5.
 
 ### 4. ICP-score every lead 0–100 against the GTM profile
 
@@ -297,7 +307,11 @@ Notes from the live run:
 
 ## Phase 5 — Find emails on the ICP keepers (Prospeo), then write back
 
-Only now, and only on **ICP-qualified, net-new keepers** (`icp:true` + `net_new`).
+Only now, and only on **ICP-qualified keepers that still need an email**:
+`icp:true` AND status is `net_new` **or** `needs_enrichment` (the latter just
+re-verifies a stale email you already own). **Skip `reusable` keepers** — they
+already have a fresh verified email — and skip non-ICP leads. That's how the
+Prospeo spend lands only where it actually buys you something.
 
 **Primary — Prospeo, off the LinkedIn URL.** No domain needed, so it covers every
 keeper including the ones with no company domain:
