@@ -80,9 +80,12 @@ curl -s -X POST "https://api.prospeo.io/account-information" \
 Evaboot's Email Finder stays available as a fallback for misses.
 
 **3. Nous — the ICP, dedup, and where the list lands (required).** Check
-`NOUS_API_KEY` (`pk_`) and connect the MCP for `get_gtm_profile`. Nous holds the
-**ICP / GTM context** the skill scores against, dedups, and stores the list. The
-scoring runs in the skill (your Claude tokens), not on Nous.
+`NOUS_API_KEY` (`pk_`) and connect the MCP. The ICP now lives in the user's own
+workspace file (`context/icp.md` with a `<!-- nous:icp -->` learned-model block);
+read it for the **ICP / GTM context** the skill scores against, with
+`get_icp_model` to refresh the model and `get_gtm_profile` to fill gaps. Nous
+dedups and stores the list. The scoring runs in the skill (your Claude tokens),
+not on Nous.
 
 ---
 
@@ -186,9 +189,12 @@ score every lead. **No Evaboot or Nous credits.** The rule that matters:
 > **Score everything. Drop nothing.** You paid to extract these leads; they all
 > go into the list. The ICP score is the filter, and it lives on the record.
 
-### 1. Pull the full ICP from the Nous GTM context (source of truth)
+### 1. Pull the full ICP from the user's own ICP file (source of truth)
 
-Prefer the `get_gtm_profile` MCP tool; else:
+The ICP now lives in the user's workspace. **Read their ICP file** (`context/icp.md`
+first; else `.claude/`, `gtm/`, `icp*`/`positioning*`) — its prose plus the
+`<!-- nous:icp -->` learned-model block. Call `get_icp_model` to refresh the model;
+use `get_gtm_profile` to fill gaps; or as a last resort:
 
 ```bash
 curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \

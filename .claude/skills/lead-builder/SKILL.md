@@ -35,12 +35,14 @@ employees, US, like anna-agency.com."*
 Detect what's connected, ask only for what's missing, one thing at a time.
 
 **1. Apollo — the people + email (required).** Check for `APOLLO_API_KEY`.
-Missing → "I find the decision maker at each company through Apollo. The people
-search costs no per-call credits, but Apollo's API is **only on a paid plan**
-(from ~$59/mo; full programmatic access sits on the higher tiers), so that
-subscription is the real floor — it is not free. You only pay *extra* to reveal
-emails. Use a **master API key**. `export APOLLO_API_KEY=...` (apollo.io →
-Settings → API)."
+Missing → "I find the decision maker at each company through Apollo. **Searching /
+building the list is free — it costs no credits.** Credits are only spent to
+reveal data: **1 credit = 1 verified email** (phone = 8). The **Basic plan
+($59/mo billed monthly) grants 2,500 credits upfront** and includes CSV/CRM/API
+data enrichment + waterfall enrichment (verified 2026-06-23), so 2,500 email
+reveals/month, the API works, and a 2,000-lead run = 2,000 of those 2,500
+credits. A paid plan is the floor (Apollo's API needs it). Use a **master API
+key**. `export APOLLO_API_KEY=...` (apollo.io → Settings → API)."
 
 **2. Nous — dedup + where the list lands (required).** Check `NOUS_API_KEY`.
 Missing → "`export NOUS_API_KEY=pk_xxx` (opennous.cloud → Settings → API keys).
@@ -53,11 +55,42 @@ pass for catch-alls). Both are pure pay-as-you-go, no monthly floor.
 
 ---
 
-## Phase 1 — Build the targeting spec (this is the whole game)
+## Two tracks — pick one before Phase 1
+
+Apollo's **people-search API is asymmetric**: it honors *include* filters
+(`q_organization_keyword_tags`, `person_titles`, size, geo) but has **no API
+parameter to exclude keywords or titles** — the only documented negative filter
+is `currently_not_using_any_of_technology_uids` (tech only). Email status is a
+search filter (`contact_email_status`) but the search returns no emails, so
+verification really happens in the reveal + verify steps. **So exclusions can
+only be applied two ways:**
+
+- **Track A — Apollo UI, curated (RECOMMENDED for a hyper-narrow list).** Claude
+  generates the full filter set *including the exclude lists*, hands it to the
+  user **ready to paste into Apollo's UI**, the user builds + saves the list
+  (where exclude-keywords, exclude-titles, and email=Verified all work), and the
+  skill **ingests that saved list**. Claude does the thinking; Apollo's UI does
+  the filtering its API can't. This mirrors how `sales-nav-builder` uses the
+  native UI. **This is the default for precise ICP work.**
+- **Track B — pure API, no UI.** Run the include-only search via the API, then
+  apply the exclude keywords/titles **downstream in Claude as a word-boundary
+  blocklist** (the proven `sales-nav-builder` pattern — match company identity
+  with `\b`, lower the score, never drop). Use when the user won't touch the UI.
+  *(Best Track-B data source: Apollo API if they already pay for it. For AI
+  semantic matching + built-in pre-verified emails, **AI-Ark** semantic search
+  is an option — ~$49/mo, but confirm its search API at docs.ai-ark.com.)*
+
+Either way, **Phase 1 produces the same artifact: a complete, auditable filter
+set with include AND exclude lists.** The only difference is where the excludes
+get applied — Apollo's UI (A) or Claude's blocklist (B).
+
+## Phase 1 — Build the filter set (this is the whole game)
 
 A vague brief wastes credits and finds noise. Your job is to turn whatever the
-user gives you into a **precise, structured targeting spec** before anything
-runs. This is where Claude earns its place — you are the lookalike engine.
+user gives you into a **precise, paste-ready Apollo filter set** before anything
+runs. This is where Claude earns its place — you are the lookalike engine, and
+you are the one who assembles the exhaustive include/exclude keyword lists a
+human would never write by hand.
 
 **Read the seed, whichever form it takes:**
 
@@ -75,22 +108,39 @@ runs. This is where Claude earns its place — you are the lookalike engine.
   category is it in? That profile becomes the search — this is the "find people
   like this one" path, done by reasoning, not a vendor.
 
-**Produce a structured spec:**
+**Produce the paste-ready filter set.** Generate it in **Apollo-paste format** —
+Apollo's keyword and title boxes accept comma-separated paste, so each block
+drops straight in. The two exclude blocks are the precision: they are what
+separate the real ICP from the look-alikes that share its vocabulary (a real
+outbound GTM agency vs a web-design / social-branding shop that also says
+"marketing"). Be exhaustive — a single include keyword finds a fraction of the
+market, and a thin exclude list lets the noise back in.
 
 ```
-Titles:      Founder, Co-founder, CEO, Owner, Managing Partner
-Seniority:   owner, founder, c_suite
-Industries:  Marketing & Advertising
-Keywords:    lead generation, demand generation, appointment setting,
-             cold email, outbound, SDR, RevOps, GTM
-Size:        1–10 employees
-Geo:         United States
-Exclude:     staffing, recruiting, PR
-Target:      5,000
+Company keywords — INCLUDE (paste into Apollo "Include keywords"):
+lead generation, demand generation, appointment setting, cold email, outbound,
+SDR, RevOps, GTM, go-to-market, pipeline generation, fractional GTM, sales development
+
+Company keywords — EXCLUDE (paste into Apollo "Exclude keywords"):
+web design, web development, social media, branding, graphic design, SEO, PR,
+video marketing, content marketing, call centre, call center, telemarketing,
+recruiting, staffing, talent, headhunting   ← + industry noise for THIS niche:
+real estate, hvac, insurance, dental, automotive, mortgage, construction, roofing,
+plumbing, restaurant, fitness, nonprofit, cybersecurity, financial advisor
+
+Job titles — INCLUDE:  Founder, Co-Founder, CEO, Owner, Managing Partner
+Job titles — EXCLUDE:  principal, assistant, intern, freelance
+Seniority:    owner, founder, c_suite
+Headcount:    1–10 employees
+Location:     United States
+Email status: Verified        (always — enforced at the verify step regardless)
+Target:       5,000
 ```
 
-Ask only for what's genuinely missing (size, geo, buyer title, count) — one
-question at a time, conversationally. Infer everything you can.
+The exclude lists change per industry/market — regenerate them for the niche,
+and **show them to the user to audit/edit before anything runs.** Ask only for
+what's genuinely missing (size, geo, buyer title, count) — one question at a
+time. Infer everything you can.
 
 ### Cross-check against the saved ICP
 
@@ -108,6 +158,30 @@ curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
   > "Your saved ICP is **insurance companies, 200+ employees** — but you asked
   > for **agency founders, 1–10**. Target this one-off, your saved ICP, or a
   > refined mix? And should I update the saved ICP?"
+
+## Phase 1.5 — (Track A only) hand off the filter set, let the user build + save the list
+
+Track A's whole point: the user applies the excludes in Apollo's UI, where they
+actually work. So after the filter set is confirmed, **hand it over and pause:**
+
+> "Here's your filter set — paste each block into Apollo's **Find people** filters
+> (Company keywords include + **Exclude keywords**, Job titles include/exclude,
+> headcount, location, **Email status → Verified**). Eyeball the result count,
+> then **select all and 'Add to list'** (e.g. *Dream 1000*) — this is the step
+> that matters: it turns the search results into **saved contacts under a label**
+> the API can read. (Just *saving the search* is not enough — the people must be
+> added to a list, so the 'Saved' count goes up.) Adding to a list is free; only
+> revealing emails costs Apollo credits, and we do that later on keepers only.
+> Tell me the list name and I'll take it from there — dedup, emails, scoring, Nous."
+
+This is also the best on-camera beat: the agent hands you a sniper-precise filter
+set you'd never assemble by hand, you save the list in two minutes, the agent
+takes over. When the user comes back with the list name, go straight to the
+**Track A saved-list ingest** in the pipeline below (skip the API search build).
+
+*(Track B skips this phase entirely — no UI, no saved list. It runs the
+include-only API search and applies the exclude lists as a Claude-side
+word-boundary blocklist downstream.)*
 
 ## Phase 2 — Confirm the spec and a rough cost, then wait
 
@@ -150,13 +224,48 @@ wait in the terminal:
 
 ## The pipeline (the real calls)
 
-### 1. Find the people — Apollo people search (no per-call credits; paid plan required)
+### 0. (Track A) Ingest the saved Apollo list — the user already applied the excludes
 
-Run the spec as a people search. This consumes **no per-call credits** (though
-Apollo's API needs a paid plan) — it returns
+When the user added the people to a list in the UI (Phase 1.5), **read that list
+of saved contacts instead of rebuilding the search** — the exclude-keywords,
+exclude-titles, and Email=Verified are already baked in. The list is a **label**
+on contacts, so use the **Contacts Search** endpoint, not the net-new people
+search.
+
+```bash
+# 1. Find the list's label id by name (the user gave you the list name):
+curl -s "https://api.apollo.io/api/v1/labels" -H "x-api-key: $APOLLO_API_KEY"
+#    → find the label whose name matches "Dream 1000" → its `id`
+
+# 2. Page through the saved contacts on that label. This reads contacts already
+#    in the account (added in Phase 1.5) — it does NOT reveal emails / consume
+#    reveal credits here; emails come later on keepers only (step 3).
+curl -s -X POST "https://api.apollo.io/api/v1/contacts/search" \
+  -H "x-api-key: $APOLLO_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "contact_label_ids": ["<LABEL_ID>"], "per_page": 100, "page": 1 }'
+```
+
+Each contact carries identity + org + `linkedin_url` (and the email if the user
+already revealed it in Apollo). Because the list is already curated, **skip the
+API include/exclude search entirely** and go straight to dedup (step 2). This is
+the recommended path for a hyper-narrow ICP.
+
+> ⚠️ CONFIRM AT WIRING: `contacts/search` + `contact_label_ids` and the
+> `GET /labels` lookup are the documented path (docs.apollo.io/reference/search-for-contacts),
+> but verify the label-id field name and that net-new people added to a list
+> surface as contacts on a fresh API-key account before relying on it end to end.
+
+### 1. (Track B) Find the people — Apollo people search (no per-call credits; paid plan required)
+
+No saved list? Run the spec as a people search. This consumes **no per-call
+credits** (though Apollo's API needs a paid plan) — it returns
 obfuscated identity (`id`, `first_name`, `last_name_obfuscated`, `title`, org
 name, `has_email`). Run **several keyword variants** and union the results — one
-query never covers the whole category.
+query never covers the whole category. **The API can only INCLUDE** — apply the
+exclude lists as a Claude-side word-boundary blocklist after this call (see the
+`sales-nav-builder` blocklist pattern): match company name + industry with
+`\b<term>\b`, lower the score on a hit, never drop the lead. Bias toward
+reachable people with `"contact_email_status": ["verified"]` and `has_email`.
 
 ```bash
 curl -s -X POST "https://api.apollo.io/api/v1/mixed_people/api_search" \
@@ -303,7 +412,12 @@ Then point the user at `campaign-writer`.
 Yes — that's the seed-from-a-person path. Give it "the founder of acme.com" and
 it reads that person's title, seniority, and what their company does, then builds
 a people search for the same profile. Claude does the similarity reasoning, so
-you don't need a lookalike vendor.
+you don't need a lookalike vendor. **Want vendor-grade similarity instead?**
+**AI-Ark** (ai-ark.com, ~$49/mo) does AI lookalike/semantic search from a seed
+list and returns pre-verified emails — a good upgrade when Claude-as-lookalike
+isn't precise enough or you want the email layer built in. (Apollo's own People
+Lookalikes is a locked, higher-tier add-on; AI-Ark is the cheaper standalone.)
+Confirm AI-Ark's search API at docs.ai-ark.com before wiring it headlessly.
 
 **Why no Sales Navigator or DiscoLike here?**
 This is the no-Sales-Nav path — its one platform subscription is Apollo (not
@@ -311,12 +425,20 @@ Sales Nav), and Claude's targeting replaces a similarity vendor like DiscoLike.
 If you have Sales Navigator and want the sharpest possible targeting, use
 `sales-nav-builder` instead.
 
-**What does a run cost?**
-A paid Apollo plan (from ~$59/mo) is the floor — it unlocks the API and the
-people search, which then adds no per-call cost. On top of that you pay only to
-reveal emails — ~$0.05 per found email, charge-on-found. So ~$0.05 per verified
-lead in usage, on top of the Apollo subscription. The Nous dedup
-keeps you from paying that reveal twice. Phase 2 always shows the estimate first.
+**What does a run cost?** (verified 2026-06-23)
+The **Apollo Basic plan ($59/mo billed monthly = 2,500 credits upfront)** is the
+floor — it unlocks the API and the people search, which is **free (no credits)**.
+Credits are spent only to reveal: **1 credit = 1 verified email.** So a 2,000-lead
+run = **2,000 of your 2,500 monthly credits**, and the search/building costs
+nothing. (Optional FullEnrich uplift is separate, charge-on-found ~$0.05/email,
+for emails Apollo misses.) Nous dedup keeps you from revealing the same person
+twice. Phase 2 always shows the estimate first.
+
+**Apollo vs AI-Ark (`lookalike-builder`) on cost?** Apollo Basic $59 = 2,500
+emails/mo, **search free** — simplest at low volume. AI-Ark $79 = 15,000 credits
+(email 0.5 cr ≈ ~$0.005/lead), **but the search itself costs credits**. Apollo
+wins for a clean ~1–2k dream-1000; AI-Ark wins on per-lead cost at higher volume
+and on the semantic lookalike.
 
 **Do I have to wait in the terminal?**
 No. Phase 3 starts the run and hands you back — the leads stream into the Nous
