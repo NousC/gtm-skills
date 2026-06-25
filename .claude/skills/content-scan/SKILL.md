@@ -145,6 +145,29 @@ Per profile: `{name}: {m} on-theme posts — anchor: "{short quote}"` or
 `{name}: no on-theme posts (they mostly post about {X})`. Note the strongest find.
 Don't paste the full evidence — it's on the Nous record.
 
+## Running at scale — gate once, scout once, fan out, assemble
+
+Same scout → fan out → assemble shape as signal-scan, with **two paid gates up
+front** because this skill spends money. For a single prospect, run steps 1-6
+inline. For a **set of qualified leads**, fan out — profiles are independent and
+all writes go to Nous per-entity, so no shared file, no collision.
+
+1. **Gate + scout once (you, the main agent).** Filter to **ICP ≥70 only** (step
+   2). Load the ICP lens a **single time** (step 1). Show **one cost preview and
+   get one yes** for the whole batch — never let sub-agents ask individually:
+   > "N qualified leads × 20 posts ≈ $X (N × 20 × $0.005). Run it?"
+2. **Fan out — one sub-agent per qualified profile, capped at ~8-10.** Paste the
+   ICP lens in so none re-fetch:
+   > "Run content-scan on this ONE profile: `<linkedin-url/email>`. ICP lens:
+   > `<paste>`. Do steps 3-5: Apify scrape → read posts semantically for on-theme
+   > Intent → `record_signal` (`signal.intent`) + `save_note` the evidence.
+   > Return ONLY: `{name}: {m} on-theme — anchor "{quote}"` (or no on-theme posts)."
+   Use the `abm-operator` sub-agent (or a general one); batch the rest.
+3. **Assemble (you).** Collect the one-liners; call out the strongest finds.
+
+Confirmation happens **once, at the top** — sub-agents only ever run on
+already-approved, already-qualified leads. For a **handful (≤5)** run inline.
+
 ## Hard rules
 - **Quote, never invent.** No Intent without a real post behind it. No on-theme
   posts → say so plainly (the silence is the finding).

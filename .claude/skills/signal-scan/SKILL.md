@@ -135,8 +135,16 @@ current `signal.<class>` fact, so there's one per class):
 
 This writes a structured `signal.<class>` claim that (1) shows under the **Signals
 tab** on the account and (2) **feeds the ICP scorecard as a feature** (signal
-claims flow into the feature map the scorer reads). One source of truth, one
-write — no notes, no local file.
+claims flow into the feature map the scorer reads).
+
+### 5b. Save a short personalization brief as a note (for outreach)
+The signals are the structured *features*; the outreach step also wants the
+*narrative*. After recording the signals, save ONE concise **signal brief** via the
+**`save_note`** MCP tool on the same account — 2-3 lines on their situation plus
+the single strongest outreach angle. This lands in the **Notes tab** so the
+`cold-email` skill can pull it for personalization. Keep it tight (a brief, not a
+dump); title it `Signal brief · <today>`. The structured signals stay the source
+of truth for scoring — the note is just the human-readable handle for writing.
 
 ### 6. Show the readout (chat only, not saved to a file)
 Print the structured scan so the operator sees it now:
@@ -160,6 +168,33 @@ Fallback (Score X/10)
 When scanning a list, also print a one-row-per-account table (account · ICP fit ·
 anchor signal · score) and note which cleared the ICP threshold — those are the
 ones to send to the post-scraper next.
+
+## Running at scale — scout once, fan out, assemble
+
+For a single account, just run steps 1-6 inline. For a **list (~10+ accounts)**,
+don't do them one-by-one and don't make every account re-do the shared work. Fan
+out instead — accounts are independent and every write goes to Nous per-entity
+(`record_signal` / `save_note` keyed to that account), so there's **no shared
+local file and no collision** when many run at once.
+
+1. **Scout once (you, the main agent).** Resolve the list and pull the accounts.
+   Load the ICP lens a **single time** — step 1 (`get_icp_model` / read
+   `context/icp.md`). Do this ONCE, not per account.
+2. **Fan out — one sub-agent per account, in capped batches (~8-10 at a time).**
+   Give each a tight prompt and **paste the ICP lens in** so it never re-fetches:
+   > "Run signal-scan on this ONE account: `<email/domain>`. ICP lens: `<paste>`.
+   > Do steps 2-5b: `get_context` → `WebFetch` the site → classify the six signal
+   > classes → `record_signal` the strongest per class → `save_note` the brief.
+   > Return ONLY the readout row: account · ICP fit · anchor signal · score."
+   Use the `abm-operator` sub-agent (or a general one). Cap concurrency at ~8-10;
+   batch the rest.
+3. **Assemble (you).** Collect the rows into the one-row-per-account table and
+   flag who cleared the ICP threshold (≈70) — that's the hand-off list for
+   content-scan.
+
+Why inject the lens: it keeps every account judged against the **same** ICP and
+saves N redundant `get_icp_model` calls. For a **handful (≤5)** the fan-out isn't
+worth the overhead — run them inline.
 
 ## Hard rules
 
