@@ -181,7 +181,8 @@ recording the signals, save ONE comprehensive markdown brief via the **`save_not
 MCP tool on the same account. This is the single document `campaign-writer` reads to
 write the copy, so it must carry the **named copy-variables**, not just prose — and
 it must follow this **exact structure** every time, so every brief across every
-account is consistent and machine-readable. Title it `Signal brief · <today>`.
+account is consistent and machine-readable. Title it `<Company> - Company Signals`
+(the company name + a plain hyphen, e.g. "Creatop - Company Signals").
 
 ```markdown
 ## Signal Scan: <Company> (<domain>)   ICP fit: <score>/100

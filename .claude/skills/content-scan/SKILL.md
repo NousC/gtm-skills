@@ -129,10 +129,11 @@ Different jobs, different lengths.
 
 - **The evidence note** → `save_note` (**the real research** — this is what
   `cold-email` reads): `focus` (email/URL), `type: "research"`,
-  `title: "Post scan — {date}"`. Put the structured report in `content`:
+  `title: "{name} - LinkedIn Post Scan"` (the person's full name + a plain hyphen,
+  e.g. "Jordan Crawford - LinkedIn Post Scan"). Put the structured report in `content`:
 
   ```
-  # Post scan: {theme}
+  # {name} - LinkedIn Post Scan
 
   **Scanned:** {date}
   **Theme:** {theme — the problem your offer solves, in your words}
