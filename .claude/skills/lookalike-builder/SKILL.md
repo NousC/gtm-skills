@@ -315,36 +315,48 @@ Route each person: **`net_new`** → find email (you pay). **`needs_enrichment`*
 **`reusable`** (fresh verified email already) → add to list, skip the finder.
 **`engaged`/`recent`** → skip, don't cold-touch mid-conversation.
 
-**The email-finder is webhook-only** (it does NOT return emails inline — verified
-live 2026-06-23, a bare submit fails with `"webhook is required"`). It runs async
-and PUSHES the found emails to a webhook. Nous hosts that webhook, so the emails
-land straight on the leads in the list. So the order is: **create the Nous list +
-insert the leads FIRST (Phase 5), then submit the email-finder pointed at the Nous
-webhook for that list.**
+**The email-finder is async, and the RELIABLE way to collect results is to POLL
+`/inquiries` and write each email as it completes** (proven end to end 2026-06-23).
+Submit requires a `webhook` param (a bare submit fails `"webhook is required"`),
+so include one — but **do NOT depend on the webhook push**: AI-Ark only fires it
+when the WHOLE job is DONE, and a single stuck lead blocks the entire batch (seen
+live — 4 emails ready, webhook never fired). The webhook receiver Nous hosts is a
+backup for clean jobs; the poll is the primary path.
+
+**Order:** create the Nous list + insert the leads FIRST (Phase 5), then submit,
+then poll + write.
 
 ```bash
-# CONFIRMED endpoint (2026-06-23): trackId in the BODY, webhook REQUIRED.
-# The webhook carries the workspace + the lead list, so Nous knows where to write.
+# 1. Submit (trackId in BODY, webhook required — point it at the Nous backup receiver).
 curl -s -X POST "https://api.ai-ark.com/api/developer-portal/v1/people/email-finder" \
   -H "X-TOKEN: $AIARK_API_KEY" -H "Content-Type: application/json" \
   -d '{ "trackId": "<TRACK_ID>",
-        "webhook": "https://api.opennous.cloud/inbound/aiark/<WORKSPACE_ID>/<LIST_ID>?secret=<AIARK_WEBHOOK_SECRET>" }'
+        "webhook": "https://api.opennous.cloud/inbound/aiark/<WORKSPACE_ID>/<LIST_ID>" }'
 
-# AI-Ark then POSTs the verified emails to that webhook → the Nous handler matches
-# each by name+domain to a lead in the list and sets its email. The list fills live.
-# Optional progress read (your authorized account; emails also live here):
+# 2. POLL until every inquiry is state:"DONE" (per-lead can take 1-3 min). Each:
+#    input{firstname,lastname,domain} + output[]{address,status,domainType,found}.
 curl -s "https://api.ai-ark.com/api/developer-portal/v1/people/email-finder/<TRACK_ID>/inquiries?page=0&size=100" \
   -H "X-TOKEN: $AIARK_API_KEY"
-# → content[].input{firstname,lastname,domain} + content[].output[]{address,status,domainType,found}
-#   status VALID + domainType SMTP = clean; CATCH_ALL = riskier. state "DONE" = finished.
+
+# 3. For each DONE inquiry with output.found==true and status VALID (or safe
+#    CATCH_ALL), MATCH it to its lead by name and PATCH the email onto the lead.
+#    The list fills live as you poll; write incrementally, don't wait for all.
+curl -s -X PATCH "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads/<LEAD_ID>" \
+  -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
+  -d '{ "workspaceId":"<WS>", "key":"email", "value":"jane@acme.com" }'
 ```
 
-> The Nous webhook receiver is `apps/worker/src/webhooks/handlers/aiark.mjs`,
-> route `/inbound/aiark/:workspaceId/:leadListId` (needs `AIARK_WEBHOOK_SECRET` set
-> + the worker deployed). It matches AI-Ark results to the pre-inserted leads by
-> name+domain and swaps in the email. The exact webhook ENVELOPE wasn't in AI-Ark's
-> docs, so the handler parses defensively and logs the raw payload on first hit —
-> confirm the shape on the first real run, then tighten if needed.
+Polling loop: every ~20-30s, pull `/inquiries`, write any newly-DONE found emails,
+stop when all inquiries are DONE or a sensible timeout (~10 min for a big batch).
+Match each result to its lead by **full name** (`firstname + lastname` ↔ the lead's
+name; the leads were inserted with `profile.full_name`). Keep `found:true` +
+status `VALID`; treat `CATCH_ALL` as riskier (keep but flag). `AI-Ark's JSON can
+contain raw control chars` — parse leniently (`json.loads(..., strict=False)`).
+
+> Backup only: the Nous webhook receiver `apps/worker/src/webhooks/handlers/aiark.mjs`
+> (route `/inbound/aiark/:workspaceId/:leadListId`, deployed) sets emails by
+> name+domain match if AI-Ark ever does push a clean completed job. The poll above
+> is what the skill relies on.
 
 ## Phase 5 — Save to a Nous lead list (stream in live)
 
