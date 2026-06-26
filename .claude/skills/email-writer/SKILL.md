@@ -13,9 +13,14 @@ ICP) and write a 3-email cold sequence in Bennet's voice. You never send. You dr
 1. **The prospect's record** (required) - `get_account` / `get_context` by email,
    LinkedIn URL, or entity id (never by name). Read the **post-scan note** (their
    voice + the named facts + the anchor), the **company signals**, the **ICP score**.
-2. **What we sell** (required) - `get_gtm_profile`.
-3. **The voice** (required) - read these AIOS files once per run, they ARE the voice:
-   `context/outreach/email-voice-and-tone.md`, `references/voice.md`.
+2. **What we sell** (required) - `get_playbook("positioning")` for our positioning,
+   plus `get_gtm_profile` for the offer / ICP / pricing details.
+3. **The voice + the method** (required) - `get_playbook("voice")` (the email voice
+   and tone, with the general register underneath) and `get_playbook("outreach")` (the
+   outreach method). These ARE the policy the graph serves to every agent. They mirror
+   your AIOS files (`context/outreach/email-voice-and-tone.md`, `outreach-principles.md`,
+   `references/voice.md`), so editing a file and calling `sync_playbook` keeps both in
+   sync. If `get_playbook` returns nothing, fall back to reading those files directly.
 
 If there is no post-scan note, stop: "No signal on this prospect yet. Run
 `content-scan` + `signal-scan` first, then I can write from real data."
@@ -87,7 +92,8 @@ offers a real artifact ("put together a short writeup... want me to send it over
 
 ## Process
 
-1. **Load** the voice files + `get_gtm_profile` + `reference/examples.md`.
+1. **Load the policy** - `get_playbook("voice")` + `get_playbook("outreach")` +
+   `get_playbook("positioning")` (fall back to the AIOS files if empty) + `reference/examples.md`.
 2. **Read the record** - `get_account`. The post-scan note (voice + named facts +
    anchor), the company signals, the ICP. Don't write a word before reading it.
 3. **Pick the pattern + tier.** ICP 85+ -> bespoke; 70-85 -> base sequence +
