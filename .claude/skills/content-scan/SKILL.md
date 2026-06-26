@@ -95,12 +95,26 @@ curl -s -X POST \
 adapt and retry once. Don't loop paid runs. Reshared posts count — read them too.
 
 ### 4. Read for Intent (semantic)
+
+> **Capture SPECIFIC NAMED FACTS, not abstractions. This is the whole point.** The
+> email-writer can only NAME what you capture. If you write "they post about
+> outbound", the email comes out abstract and gets deleted. Pull the concrete,
+> nameable things: **exact numbers** ("170k emails/mo", "20+ meetings in 90 days",
+> "36% positive reply rate"), **named tools** (Clay, Smartlead, Apollo, Claygent,
+> not "their stack"), **named clients / companies / case studies**, **named
+> verticals / ICPs**, and the **specific public stances** they've taken (the actual
+> position, e.g. "argues open rates are vanity, only positive replies count" — NOT
+> the vague "cares about quality"). A fact you can drop into a sentence verbatim is
+> usable. A theme is not. Zevenue's bar: "Google Maps + Mindbody + state license
+> registries", never "the data sources".
+
 Two reads:
-- **What they post about overall** — 1–2 sentences on their dominant themes +
-  voice (so we know what they write about, even when nothing is on-theme).
+- **What they post about overall** — their dominant themes + voice, AND the specific
+  named stances/claims they repeat (named, observational, never to be quoted back).
 - **On-theme matches** — for each post that touches the problem your offer solves,
-  capture: **date**, a **1–3 sentence quote in their own words**, the **post URL**,
-  and a **one-line why-it-matches**. Borderline → an "adjacent" note.
+  capture: **date**, the **specific named facts in it** (numbers, tools, claims), the
+  **post URL**, and a **one-line why-it-matches**. The quote is for YOUR understanding;
+  what the writer uses is the named facts, never the quote cited back at them.
 Pick the **anchor** — the single strongest, most recent on-theme post.
 
 ### 5. Record — a SHORT signal + a LONGER structured note (both on Nous, no file)
@@ -118,27 +132,49 @@ Different jobs, different lengths.
   `title: "Post scan — {date}"`. Put the structured report in `content`:
 
   ```
-  # Post scan — {themes} · {date}
-  {profile_url} · {n} posts reviewed · {m} on-theme
+  # Post scan: {theme}
 
-  ## What they post about
-  {1-2 sentences: their dominant themes + voice — so we know what they write
-  about even when nothing is on-theme}
+  **Scanned:** {date}
+  **Theme:** {theme — the problem your offer solves, in your words}
+  **Profile:** {linkedin_url}
+  **Headline:** {their LinkedIn headline if available}
+  **Posts reviewed:** {n}
+  **Direct matches:** {m}
+
+  ## What they post about (voice + themes)
+  {2-4 sentences: their dominant themes, the *cadence* of what they publish, and
+  their VOICE — how they write (contrarian? data-led? teacher? story?). This is the
+  copy fuel: the email-writer mirrors this voice. Be specific, quote a phrase or two
+  they actually use.}
 
   ## Direct matches
-  ### {date} — {post_url}
-  > {quote in their own words}
-  Why it matches: {one line}
-  {repeat per match}
+  ### {date} — [post]({post_url})
+  > {1-3 sentence quote in their own words — the real line, not a paraphrase}
+
+  **Why it matches:** {one line — the specific link to the problem you solve}
+  **Copy hook:** {one line — the exact angle/phrase the email can echo back to them}
+  {repeat per on-theme post, strongest + most recent first}
 
   ## Adjacent signals
-  {only if any — same shape + a "Why it's adjacent" line}
+  {posts that touch the space without being dead-on — same shape + a "Why it's
+  adjacent" line. Only if any.}
 
-  ## No on-theme posts
-  {only if zero matches — one sentence on what they DO post about, so you can
-  judge whether the theme is truly absent or just framed differently}
+  ## Voice & phrasing bank
+  {3-6 verbatim short phrases / words they actually use — the vocabulary the email
+  should sound like. e.g. "leverage", "the math nobody does", "is this you". This is
+  what makes the copy sound like a peer, not a vendor.}
+
+  ## Anchor
+  {the single strongest, most recent on-theme post — date + one-line why it's the
+  lead angle for outreach.}
+
+  ## No-match summary
+  {only if zero on-theme posts — one sentence on what they DO post about, so you can
+  judge whether the theme is truly absent or just framed differently.}
   ```
   (save_note takes focus/title/content/type/date only — no category/metadata.)
+  **Make it comprehensive** — this note is the entire input the email-writer compiles
+  into copy. More detail = better, more personal emails. Never thin it out.
 
 ### 6. Report back (chat only)
 Per profile: `{name}: {m} on-theme posts — anchor: "{short quote}"` or

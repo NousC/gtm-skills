@@ -1,6 +1,6 @@
 ---
 name: signal-scan
-description: One job — scan an account (or a whole Nous lead list) for buying signals from the company website plus what Nous already knows, rank them, and record a concise signal block straight onto the Nous account so it powers ICP scoring. This is the first enrichment pass: signals are the features the ICP model scores on. Use it when the user says "scan my list for signals", "find buying signals on these accounts", "research and prioritize this list", "what's going on at these companies", "enrich my leads with signals", or before scoring/working a list. It does ONE thing and hands off: it does NOT scrape LinkedIn posts (that's the separate post-scraper skill, run later only on ICP-qualified leads) and does NOT write outreach (that's the cold-email / linkedin skills). For a single 1:1 pre-meeting brief use meeting-brief instead.
+description: One job — scan an account (or a whole Nous lead list) for buying signals from the company website plus what Nous already knows, rank them, record a structured signal block onto the Nous account (so it powers ICP scoring), AND save a comprehensive signal brief in Notes — each signal carrying the named copy-variables (raise_size, founder_handle, buyer_post_url…) that the campaign-writer later injects. This is the first enrichment pass: signals are the features the ICP model scores on, and the brief is the copy-fuel outreach reads. Use it when the user says "scan my list for signals", "find buying signals on these accounts", "research and prioritize this list", "what's going on at these companies", "enrich my leads with signals", or before scoring/working a list. It does ONE thing and hands off: it does NOT scrape LinkedIn posts (that's the separate post-scraper skill, run later only on ICP-qualified leads) and does NOT write outreach (that's the cold-email / linkedin skills). For a single 1:1 pre-meeting brief use meeting-brief instead.
 ---
 
 # Signal scan
@@ -117,34 +117,99 @@ Read **`references/signal-types.md`** — the full catalog (the six classes, whe
 to find each, the 1-10 scoring rubric, and the patterns that amplify). For each
 signal capture: **detected** (specific, factual) · **implies** (their day-to-day
 reality) · **score** (1-10, per the rubric) · **class** · **approach**
-(pain-led / value-led / fallback) · **angle** (one line). Rank most
-exclusive/highest-intent first; pick the **anchor** (strongest). Always include a
-**fallback** for when no strong signal lands.
+(pain-led / value-led / fallback) · **angle** (one line) · **key data points for
+copy** (see below). Rank most exclusive/highest-intent first; pick the **anchor**
+(strongest). Always include a **fallback** for when no strong signal lands.
 
-### 5. Record the signals onto the Nous account
-Use the **`record_signal`** MCP tool — the canonical, validated way to write a
-signal. One call per signal, the **strongest one per class** (it's stored as the
-current `signal.<class>` fact, so there's one per class):
-- `focus` — the person's email or entity id
-- `signal_class` — stack | hiring | momentum | friction | intent | domain
+**Key data points for copy — the most important new output.** A signal isn't just
+a reason to reach out; it's structured *copy-fuel*. For every signal, extract the
+**named variables** the email will inject — the exact strings, not vague prose:
+
+```
+raise_size: "$140M Series C"          founder_handle: "Alex Jekowsky, Co-founder & CEO"
+raise_date: "March 26, 2026"          founder_ai_thesis_quote: "horizontal AI … hit a wall"
+lead_investor: "Sumeru Equity"        buyer_post_url: "https://linkedin.com/posts/…"
+expansion_verticals: "dry cleaners…"  hiring_role: "VP Marketing"
+```
+
+These are what the email-writer NAMES in the copy. **Every variable AND every
+signal's `detected` must be a specific named fact, never an abstraction** — the
+email is only as concrete as what you capture. The bar:
+- funding → "$140M Series C, March 2026, Sumeru lead", NOT "recently funded"
+- stack → "Clay + Smartlead + Apify, Smartlead Certified Partner", NOT "modern tooling"
+- proof → "Hook+Ladder: 20+ meetings in 90 days", NOT "has case studies"
+- verticals → "dry cleaners, route operators, tailors, cobblers", NOT "several verticals"
+- hiring → "3 SDR roles posted in 30 days", NOT "they're growing"
+
+If a field comes out vague, the source was too thin — dig further (another page,
+web search, the careers/about page), don't record fluff. NOTE: the email-writer
+NAMES these observationally ("saw you closed a $140M Series C"), it never quotes a
+person's literal words back at them. Capture the facts so the copy can name them.
+
+### 5. Record the signals onto the COMPANY (not the person)
+These six classes are **company facts** — stack, hiring, momentum, friction,
+domain are shared by everyone at the company. You'll reach five people at one
+agency (Founder, Head of Growth, Marketing VP…); the company signal is the same
+for all of them, so it belongs on the **company entity**, not duplicated per
+person. The *person's* unique signal (their voice / intent) comes later from
+`content-scan` and lands on the person. The person record then **inherits** the
+company signals automatically, so each person shows: company signals (inherited) +
+their own intent.
+
+Use the **`record_signal`** MCP tool. One call per signal, the **strongest one per
+class** (stored as the current `signal.<class>` fact, one per class):
+- `focus` — **the company DOMAIN** (e.g. `acme.com`), so it resolves to the company
+  entity shared by all its people. Not a person email.
+- `signal_class` — stack | hiring | momentum | friction | domain (intent comes from
+  `content-scan`, on the person — don't write intent here)
 - `detected` — the specific, factual finding
 - `implies` — their day-to-day reality (optional)
 - `score` — 0-10
 - `approach` — pain_led | value_led | fallback (optional)
 - `angle` — one-line outreach angle (optional)
+- `variables` — the key data points for copy (see step 4), in the brief
 
-This writes a structured `signal.<class>` claim that (1) shows under the **Signals
-tab** on the account and (2) **feeds the ICP scorecard as a feature** (signal
-claims flow into the feature map the scorer reads).
+This writes a structured `signal.<class>` claim on the **company** that (1) shows
+under the company's **Signals tab**, (2) is **inherited by every person** at that
+company, and (3) **feeds the ICP scorecard as a feature**. The comprehensive brief
+(5b) is also saved on the company; per-person copy fuel (voice/intent) is added by
+`content-scan` on each person.
 
-### 5b. Save a short personalization brief as a note (for outreach)
-The signals are the structured *features*; the outreach step also wants the
-*narrative*. After recording the signals, save ONE concise **signal brief** via the
-**`save_note`** MCP tool on the same account — 2-3 lines on their situation plus
-the single strongest outreach angle. This lands in the **Notes tab** so the
-`cold-email` skill can pull it for personalization. Keep it tight (a brief, not a
-dump); title it `Signal brief · <today>`. The structured signals stay the source
-of truth for scoring — the note is just the human-readable handle for writing.
+### 5b. Save the comprehensive signal brief as a note (the copy fuel)
+The structured signals (5) feed *scoring*; the **brief** feeds the *writer*. After
+recording the signals, save ONE comprehensive markdown brief via the **`save_note`**
+MCP tool on the same account. This is the single document `campaign-writer` reads to
+write the copy, so it must carry the **named copy-variables**, not just prose — and
+it must follow this **exact structure** every time, so every brief across every
+account is consistent and machine-readable. Title it `Signal brief · <today>`.
+
+```markdown
+## Signal Scan: <Company> (<domain>)   ICP fit: <score>/100
+**Summary:** <1-2 sentences: what they do, current situation, most interesting finding>
+
+### Signal 1: <name> (Score X/10, <class>)
+**Detected:** <specific, factual, dated finding>
+**Situation it implies:** <their Monday-morning reality — what the buyer is dealing with>
+**Recommended approach:** Pain-led | Value-led | Fallback
+**Campaign angle:** <one sentence — the core message this signal enables>
+**Key data points for copy:**
+- <variable_name>: "<exact value>"
+- <variable_name>: "<exact value>"
+
+### Signal 2 … 3 …   (same structure, strongest first)
+
+### Fallback (Score X/10)
+**Situation assumption:** <most common pain for this profile when no strong signal lands>
+**Campaign angle:** <one sentence>
+**Key data points for copy:**
+- <variable_name>: "<exact value>"
+```
+
+Why comprehensive (not the old 2-3 liner): the brief **is** the instruction-set
+`campaign-writer` compiles into the email. The **Key data points for copy** are its
+heart — named variables with exact values. The structured `signal.*` records stay
+the source of truth for *scoring*; this note is the source of truth for *writing*.
+Together: 6 signals (machine-scored) + 1 brief (the writer's input) per account.
 
 ### 6. Show the readout (chat only, not saved to a file)
 Print the structured scan so the operator sees it now:
@@ -154,16 +219,22 @@ Print the structured scan so the operator sees it now:
 Summary: <1-2 sentences — what they do, their situation, the most interesting find>
 
 Signal 1: <name>  (Score X/10, <class>)
-  Detected:  <factual finding>
-  Implies:   <their Monday-morning reality>
-  Angle:     <one line the signal enables>
+  Detected:   <factual finding>
+  Implies:    <their Monday-morning reality>
+  Approach:   Pain-led | Value-led | Fallback
+  Angle:      <one sentence the signal enables>
+  Copy vars:  raise_size="$140M" · founder_handle="…" · buyer_post_url="…"
 
 Signal 2 … 3 …
 
 Fallback (Score X/10)
   Assumption: <most common pain for this profile>
-  Angle:      <one line>
+  Angle:      <one sentence>
+  Copy vars:  <named variable>="<value>"
 ```
+
+This chat readout mirrors the brief saved in 5b — same fields, so what the operator
+sees is exactly what `campaign-writer` will read.
 
 When scanning a list, also print a one-row-per-account table (account · ICP fit ·
 anchor signal · score) and note which cleared the ICP threshold — those are the
@@ -184,7 +255,9 @@ local file and no collision** when many run at once.
    Give each a tight prompt and **paste the ICP lens in** so it never re-fetches:
    > "Run signal-scan on this ONE account: `<email/domain>`. ICP lens: `<paste>`.
    > Do steps 2-5b: `get_context` → `WebFetch` the site → classify the six signal
-   > classes → `record_signal` the strongest per class → `save_note` the brief.
+   > classes → for each, extract the **key data points for copy** (named variables,
+   > exact values) → `record_signal` the strongest per class → `save_note` the
+   > **comprehensive brief** (the exact 5b structure, with Key data points for copy).
    > Return ONLY the readout row: account · ICP fit · anchor signal · score."
    Use the `abm-operator` sub-agent (or a general one). Cap concurrency at ~8-10;
    batch the rest.
@@ -216,8 +289,10 @@ worth the overhead — run them inline.
   prioritize that over inferences from the site.
 - **One job.** Signals only — no LinkedIn-post scraping (separate skill), no email
   writing (separate skill). If asked, point at the right skill and stop.
-- **Nous is the one source of truth.** Record concise signals onto the account;
-  do not write a separate report file.
+- **Nous is the one source of truth.** Both outputs live in Nous — the structured
+  signals (`record_signal`) and the comprehensive brief (`save_note`). Never a
+  separate local file. Signals are the source of truth for *scoring*; the brief is
+  the source of truth for *writing*.
 - **Website-only research here.** For a 1:1 pre-meeting brief that reads their
   posts, use meeting-brief.
 
