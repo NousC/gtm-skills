@@ -1,36 +1,54 @@
 ---
 name: lookalike-builder
-description: Paste 5 companies you'd love to work with (or describe the niche), and it builds an enriched, ICP-scored lead list with verified emails — saved straight into a Nous list. Powered by AI-Ark's API: a similarity model finds lookalike companies from your seeds, you narrow with include/exclude keywords and firmographics, it pulls the decision makers, and BounceBan-verified emails come last. The whole search + count is free to preview, so you see exactly how many leads (and the cost) and approve before a single email credit is spent. No Sales Navigator, no Apollo UI, no manual filtering — one API does lookalike + include + exclude + verified emails.
+description: Paste up to 5 companies you'd love to work with (or describe the niche) and AI-Ark's similarity model finds the lookalike companies. The CORE JOB of this skill is building the company table — discover the lookalikes, narrow with include/exclude keywords and firmographics, ICP-score, and save the companies into Nous. The whole search and count is free to preview. It CAN also pull decision makers and BounceBan-verified emails directly, but AI-Ark's people index is thin on small agencies (~37% of 3–20-person companies have an indexed person), so for the people layer the recommended path is to hand the company list to `company-people` (LinkedIn scrape, ~90% coverage). Rule of thumb: lookalike-builder discovers the COMPANIES, company-people turns them into DECISION MAKERS. Use AI-Ark's own people search only on bigger, well-indexed companies (50+) where a title-filtered database query beats scraping a large People tab.
 ---
 
 # Lookalike lead builder (AI-Ark)
 
-## What it does
+## What it does — and what it's FOR
 
 You paste **up to 5 companies you'd love to work with** — or just describe the
-niche — and it builds the list: the **decision maker** at each lookalike company
-with a **verified email**, deduped against what you already have and saved into a
-**Nous lead list** ready for outbound.
+niche — and AI-Ark's similarity model returns the **lookalike companies**. The
+**core deliverable of this skill is the company table**: the similar companies,
+narrowed by include/exclude keywords + firmographics, ICP-scored, saved into Nous.
 
-The difference from `lead-builder` (Apollo) and `sales-nav-builder` (Sales Nav):
-this one is **fully API-native**. AI-Ark's API does the one thing Apollo's API
-can't — it **excludes** (exclude keywords + exclude lists) and finds **verified
-emails** — so there is **no UI paste step and no second verifier**. One engine
-does lookalike → narrow → exclude → emails.
+That company discovery is the **irreplaceable** thing AI-Ark does — no Sales Nav,
+no Apollo UI, one API does lookalike + include + exclude. It's the **only** job we
+reach for this skill to do.
+
+> **The split (decided 2026-06-26, proven on a real 527-lead build).** AI-Ark has
+> TWO engines and they are NOT equal quality:
+> - **Company lookalike search = excellent.** Always use it. This is the company table.
+> - **People index = thin for small agencies (~37% of 3–20-person companies had any
+>   indexed decision-maker on a real run), dense for bigger ones.**
+>
+> So **the recommended pipeline is: lookalike-builder for the COMPANIES →
+> `company-people` (LinkedIn scrape) for the DECISION MAKERS + emails** (~90%
+> coverage on small agencies, because LinkedIn's company page lists nearly every
+> founder). Only use AI-Ark's own people search + email-finder on **bigger,
+> well-indexed companies (50+)** where a title-filtered database query beats
+> scraping a large People tab.
+
+This skill **can** still run the full people + email path end to end (Phases 3–6
+below) — keep it for the big-company case, or when the user explicitly wants the
+one-tool flow. But by default, **stop at the company table and hand off**.
 
 ```
+[0] EXCLUDE-OWN auto-build an exclude list from your Nous domains → no re-finds
 [1] LOOKALIKE   Company Search lookalikeDomains:[5 seeds]  → similar companies
 [2] NARROW      + filters: size, location, INCLUDE keywords → tighter set
-[3] EXCLUDE     + exclude keywords / exclude lists          → the noise removed
+[3] EXCLUDE     + exclude keywords + the exclude-own list   → the noise removed
 [4] PREVIEW     count + sample, NO emails, NO email spend    → you approve here
-[5] DECISION    People Search inside those companies        → the founders
-    MAKERS        + seniority/title + exclude keywords
-[6] EMAILS      Track ID → email-finder (BounceBan-verified) → only after approval
-[7] SAVE        dedup vs Nous → create Nous list → stream in live
+[5] SAVE        ICP-score companies → Nous list (the company table)  ◄ DEFAULT STOP
+                ─────────────────────────────────────────────────────────────────
+                then hand the company list to /company-people for the people layer
+                (or, for 50+ companies, continue below with AI-Ark people search)
+[6] PEOPLE      (optional) People Search inside those companies → founders
+[7] EMAILS      (optional) Track ID → email-finder (BounceBan-verified)
 ```
 
-The flow: **paste seeds → AI-Ark similarity → narrow/exclude → preview the count
-→ you approve → verified emails → Nous list.**
+The default flow: **paste seeds → AI-Ark similarity → narrow/exclude → preview the
+count → save the company table → hand off to `company-people` for decision makers.**
 
 ## How to invoke
 
@@ -143,19 +161,49 @@ curl -s "https://api.opennous.cloud/v2/workspace/facts?categories=ICP,Market" \
 
 Aligned → say so and move on. Diverges → surface it and ask before spending.
 
-### (Optional) build an exclude LIST for whole-company exclusions
+### Exclude what you ALREADY have — automatic, every run (don't pay twice)
 
-AI-Ark can exclude up to 10 saved lists per search (e.g. current customers,
-competitors, an industry block too big for keywords). Build it first — note
-**AI-Ark lists expire after 24h**, so the skill rebuilds it each run from the
-canonical exclude set it keeps:
+**Always do this before the search.** The whole point: you already have leads in
+Nous, and you should never re-surface or re-pay for them. So each run, pull every
+domain you already own from Nous and feed them to AI-Ark as an exclude list, so
+those companies never even appear in the lookalike results.
+
+This is the COMPANY-level guard at search time. (The PERSON-level guard — `/v2/dedup`
+by LinkedIn URL right before the paid email step — still runs in Phase 4. Two layers:
+exclude known companies up front, dedup known people before paying.)
+
+**Step 1 — collect your existing domains from Nous.** Pull every lead list and
+gather each lead's domain (and the domain from its email), into one deduped set:
+
+```bash
+# every list, then every lead's domain — the set of companies you already touch
+curl -s "https://api.opennous.cloud/api/lead-lists?workspaceId=$WS" \
+  -H "Authorization: Bearer $NOUS_API_KEY"   # → list ids
+# for each list:
+curl -s "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads?workspaceId=$WS" \
+  -H "Authorization: Bearer $NOUS_API_KEY"   # → leads[].fields.domain + email domain
+```
+Collect into a unique, lowercased domain set (strip `www.`, take the part after `@`
+for emails). Add any explicit competitor/customer domains the user names.
+
+**Step 2 — build the AI-Ark exclude list from that set.** AI-Ark allows up to 10
+exclude lists per search; **its lists expire after 24h**, so rebuild it each run:
 
 ```bash
 curl -s -X POST "https://api.ai-ark.com/api/developer-portal/v1/save-list" \
   -H "X-TOKEN: $AIARK_API_KEY" -H "Content-Type: application/json" \
-  -d '{ "name":"exclude-noise", "items":[ "competitor.com", "bigclient.com" ] }'
-# → returns a list id to reference in the search `lists` field
+  -d '{ "name":"nous-already-have", "items":[ "<domain1>", "<domain2>", … ] }'
+# → returns a list id → reference it in the search `lists.company_id.exclude`
 ```
+
+**Step 3 — reference it in every Company Search** (Phase 2) via
+`"lists": { "company_id": { "exclude": ["<EXCLUDE_LIST_UUID>"] } }`. Now the count
+and the results already have your existing companies stripped out — the preview
+reflects only net-new companies, so you never pay to re-find someone you have.
+
+Tell the user what you excluded: "Excluded the N companies already in your Nous
+lists, so this is all net-new." If a domain set is huge (>thousands), it still works;
+AI-Ark handles the list, and the Phase 4 person dedup is the backstop either way.
 
 ## Phase 2 — Preview the count and a rough cost, then WAIT (no emails yet)
 
@@ -424,6 +472,9 @@ people, not just at the email step. The gate:
 - **Confirm the credit cost before ANY paid pull.** Get the count free, show
   "X people ≈ Y credits", wait for an explicit yes. Pulling records AND finding
   emails both cost — the gate covers both, not just emails.
+- **Exclude what you already have, EVERY run.** Before the search, build the
+  exclude-own list from your Nous domains (the "Exclude what you already have" step)
+  and pass it in `lists.company_id.exclude`, so existing companies never re-surface.
 - **Dedup before you reveal.** Reveal emails only on `net_new`. Re-enrich
   `needs_enrichment`, reuse `reusable` — never re-buy a person you already own.
 - **Confirm field names live on the first run** (filters, ids, Track ID, email
