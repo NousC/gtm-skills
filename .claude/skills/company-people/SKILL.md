@@ -142,6 +142,7 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
         { "name":"Yusuf Ahmed", "email":"yusuf@zevenue.com", "company":"Zevenue",
           "linkedin_url":"https://www.linkedin.com/in/itsyusufahmed",
           "fields": { "title":"Founder", "domain":"zevenue.com",
+                      "industry":"agency", "employee_count": 8,
                       "email_status":"verified", "source":"company_people" } } ] }'
 ```
 
@@ -149,6 +150,13 @@ Map: `name` ← firstName+lastName, `linkedin_url` ← `linkedinUrl`, `company` 
 input company, `email` ← the verified address, `fields.email_status` ← the
 NeverBounce verdict, `fields.title` ← headline/position. Then dedup is handled by
 Nous; point the user at `signal-scan` / `content-scan` next.
+
+**Pass firmographics through** — `fields.industry` and `fields.employee_count`.
+When `lookalike-builder` hands you the gap companies it already knows each one's
+AI-Ark `industry` + size — carry them onto every person you save. (Standalone, set
+`industry` from the company and `employee_count` from the scrape's company size if
+present.) These become company firmographic CLAIMS on ingest and are what the ICP
+scorecard scores on — drop them and the lead can't be scored.
 
 ## Hard rules — never break these
 
