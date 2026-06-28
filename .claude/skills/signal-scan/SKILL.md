@@ -113,21 +113,22 @@ footer/integrations where they exist. Read them for the six classes.
 > JS-rendered sites instead — richer, but paid. Default to free `WebFetch`.
 
 ### 3b. Check the workspace's exclusions (who we are NOT)
-Call **`get_exclusions`** once (in the scout step for a list; inline for one
-account). It returns the **semantic exclusions** the ICP states — the "not a fit"
-kinds of company that firmographics can't catch (e.g. a cold-CALLING agency vs the
-cold-EMAIL agencies we DO want; a pure branding/messaging shop vs a real outbound
-agency). For **each** exclusion, judge the company **from the site you just read**:
-does it genuinely match that description?
-- **Match** → call **`flag_exclusion`** (`focus` = the company **domain**, `key` =
-  the exclusion key, `matched: true`, plus `confidence` and the `evidence` you saw).
-  This hard-caps every person at that company to **Not-ICP** regardless of other
-  signals — so be conservative; only flag a genuine match. Read the line carefully
-  (cold-EMAIL outbound is the ICP, only cold-CALLING is excluded).
-- **No match** → record nothing (absence = not excluded). You may pass
-  `matched: false` only to clear a prior wrong flag.
+The ICP lens you loaded in step 1 (the `nous:icp` block from `get_icp_model` /
+`context/icp.md`) lists any **hard exclusions** under a **"Not a fit (hard
+exclusions)"** heading — each with its feature key in backticks, e.g.
+`` `exclusion.cold_calling_agency` ``. These are the "not a fit" kinds firmographics
+can't catch (a cold-CALLING agency vs the cold-EMAIL agencies we DO want; a pure
+branding/messaging shop vs a real outbound agency). For **each** one, judge the
+company **from the site you just read**: does it genuinely match?
+- **Match** → record it with the normal **`record`** tool on the **company**:
+  `record(focus: <domain>, observations: [{ kind: "state", property: "<the exact key from the block, e.g. exclusion.cold_calling_agency>", value: { matched: true, evidence: "<what you saw on the site>" }, source: "signal-scan" }])`.
+  This hard-caps **every person** at that company to **Not-ICP** regardless of other
+  signals — so be conservative; only a genuine match. Read the line carefully
+  (cold-EMAIL outbound is the ICP; only cold-CALLING is excluded).
+- **No match** → record nothing (absence = not excluded). To clear a prior wrong
+  flag, `record` the same property with `value: { matched: false }`.
 
-If `get_exclusions` returns none, skip this step. An excluded account is out — you
+If the block lists no exclusions, skip this step. An excluded account is out — you
 can stop scanning it for buying signals (it won't be worked).
 
 ### 4. Identify + rank signals
@@ -280,14 +281,15 @@ local file and no collision** when many run at once.
 
 1. **Scout once (you, the main agent).** Resolve the list and pull the accounts.
    Load the ICP lens a **single time** — step 1 (`get_icp_model` / read
-   `context/icp.md`) — AND call **`get_exclusions`** once. Do both ONCE, not per
-   account; pass the exclusion list into each sub-agent so it judges, not refetches.
+   `context/icp.md`). The lens already carries the **"Not a fit (hard exclusions)"**
+   keys — pass them into each sub-agent so it judges, not refetches.
 2. **Fan out — one sub-agent per account, in capped batches (~8-10 at a time).**
    Give each a tight prompt and **paste the ICP lens in** so it never re-fetches:
    > "Run signal-scan on this ONE account: `<email/domain>`. ICP lens: `<paste>`.
-   > Exclusions to judge: `<paste get_exclusions list>`.
+   > Exclusions to judge (key + description): `<paste the 'Not a fit' keys from the block>`.
    > Do steps 2-5b: `get_context` → `WebFetch` the site → judge each exclusion and
-   > `flag_exclusion` any genuine match (caps it Not-ICP) → classify the six signal
+   > `record` any genuine match as `{kind:'state', property:'exclusion.<key>', value:{matched:true,evidence:…}}`
+   > on the company (caps it Not-ICP) → classify the six signal
    > classes → for each, extract the **key data points for copy** (named variables,
    > exact values) → `record_signal` the strongest per class → `save_note` the
    > **comprehensive brief** (the exact 5b structure, with Key data points for copy).
