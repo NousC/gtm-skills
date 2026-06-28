@@ -112,6 +112,24 @@ footer/integrations where they exist. Read them for the six classes.
 > upgrade: if `FIRECRAWL_API_KEY` is set, use Firecrawl's scrape/crawl for
 > JS-rendered sites instead — richer, but paid. Default to free `WebFetch`.
 
+### 3b. Check the workspace's exclusions (who we are NOT)
+Call **`get_exclusions`** once (in the scout step for a list; inline for one
+account). It returns the **semantic exclusions** the ICP states — the "not a fit"
+kinds of company that firmographics can't catch (e.g. a cold-CALLING agency vs the
+cold-EMAIL agencies we DO want; a pure branding/messaging shop vs a real outbound
+agency). For **each** exclusion, judge the company **from the site you just read**:
+does it genuinely match that description?
+- **Match** → call **`flag_exclusion`** (`focus` = the company **domain**, `key` =
+  the exclusion key, `matched: true`, plus `confidence` and the `evidence` you saw).
+  This hard-caps every person at that company to **Not-ICP** regardless of other
+  signals — so be conservative; only flag a genuine match. Read the line carefully
+  (cold-EMAIL outbound is the ICP, only cold-CALLING is excluded).
+- **No match** → record nothing (absence = not excluded). You may pass
+  `matched: false` only to clear a prior wrong flag.
+
+If `get_exclusions` returns none, skip this step. An excluded account is out — you
+can stop scanning it for buying signals (it won't be worked).
+
 ### 4. Identify + rank signals
 Read **`references/signal-types.md`** — the full catalog (the six classes, where
 to find each, the 1-10 scoring rubric, and the patterns that amplify). For each
@@ -262,15 +280,18 @@ local file and no collision** when many run at once.
 
 1. **Scout once (you, the main agent).** Resolve the list and pull the accounts.
    Load the ICP lens a **single time** — step 1 (`get_icp_model` / read
-   `context/icp.md`). Do this ONCE, not per account.
+   `context/icp.md`) — AND call **`get_exclusions`** once. Do both ONCE, not per
+   account; pass the exclusion list into each sub-agent so it judges, not refetches.
 2. **Fan out — one sub-agent per account, in capped batches (~8-10 at a time).**
    Give each a tight prompt and **paste the ICP lens in** so it never re-fetches:
    > "Run signal-scan on this ONE account: `<email/domain>`. ICP lens: `<paste>`.
-   > Do steps 2-5b: `get_context` → `WebFetch` the site → classify the six signal
+   > Exclusions to judge: `<paste get_exclusions list>`.
+   > Do steps 2-5b: `get_context` → `WebFetch` the site → judge each exclusion and
+   > `flag_exclusion` any genuine match (caps it Not-ICP) → classify the six signal
    > classes → for each, extract the **key data points for copy** (named variables,
    > exact values) → `record_signal` the strongest per class → `save_note` the
    > **comprehensive brief** (the exact 5b structure, with Key data points for copy).
-   > Return ONLY the readout row: account · ICP fit · anchor signal · score."
+   > Return ONLY the readout row: account · ICP fit · anchor signal · score (note if excluded)."
    Use the `abm-operator` sub-agent (or a general one). Cap concurrency at ~8-10;
    batch the rest.
 3. **Assemble (you).** Collect the rows into the one-row-per-account table and
