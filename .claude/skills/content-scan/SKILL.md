@@ -117,11 +117,29 @@ Two reads:
   what the writer uses is the named facts, never the quote cited back at them.
 Pick the **anchor** — the single strongest, most recent on-theme post.
 
+### 4b. Competitor & switching signals (a distinct intent class)
+While reading the posts, watch for the prospect **naming a competitor or a tool in
+your category** — praising it, complaining about it, comparing, or signalling they're
+evaluating/switching. That's a sharper, time-sensitive intent than a generic pain
+post. When you find a genuine one, record it on the **person** as a decaying intent
+event (it feeds the intent score as `competitor_engaged`):
+```
+record(focus: <email/linkedin>, observations: [{ kind: "event",
+  property: "interaction.competitor_engagement",
+  value: { competitor: "<named tool/competitor>", stance: "evaluating|frustrated|praising|switching", evidence: "<the exact line>", post_url: "<url>" },
+  source: "content-scan" }])
+```
+Only on a real, named mention — never infer one. (Engagement with a *competitor's
+own posts*, and following *creators in-category*, come later from the audience
+monitor; here we only read the prospect's OWN posts.)
+
 ### 5. Record — a SHORT signal + a LONGER structured note (both on Nous, no file)
 Different jobs, different lengths.
 
 - **The Intent signal** → `record_signal` (**keep it short** — it's a glanceable
-  line on the Signals tab): `signal_class: "intent"`, `detected` = ONE tight
+  line on the Signals tab). This is the person·intent `posted_pain` class — it
+  feeds the **intent score** (decays over ~3 weeks), so recency + score matter:
+  `signal_class: "intent"`, `detected` = ONE tight
   sentence naming the theme (a 3-6 word quote fragment is fine, not a paragraph),
   `implies` = one short clause, `score` (0-10 by how clearly + recently they work
   the problem), `approach`, `angle` = one line in their words. The detail lives in
