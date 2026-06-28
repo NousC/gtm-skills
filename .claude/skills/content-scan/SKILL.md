@@ -132,15 +132,20 @@ Different jobs, different lengths.
   `title: "{name} - LinkedIn Post Scan"` (the person's full name + a plain hyphen,
   e.g. "Jordan Crawford - LinkedIn Post Scan"). Put the structured report in `content`:
 
-  ```
-  # {name} - LinkedIn Post Scan
+  ```markdown
+  # LinkedIn post scan — {name}
 
-  **Scanned:** {date}
-  **Theme:** {theme — the problem your offer solves, in your words}
-  **Profile:** {linkedin_url}
-  **Headline:** {their LinkedIn headline if available}
-  **Posts reviewed:** {n}
-  **Direct matches:** {m}
+  > {1-2 sentences: the dominant theme they keep returning to and the single
+  > strongest hook this scan surfaced for outreach.}
+
+  Scanned: {date}
+  Theme: {theme — the problem your offer solves, in your words}
+  Profile: {linkedin_url}
+  Headline: {their LinkedIn headline if available}
+  Posts reviewed: {n}
+  Direct matches: {m}
+
+  ---
 
   ## What they post about (voice + themes)
   {2-4 sentences: their dominant themes, the *cadence* of what they publish, and

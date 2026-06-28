@@ -243,69 +243,72 @@ create `context/icp.md` so the ICP lives in their repo going forward.
 
 ### 6. Write the brief
 
-Synthesize everything into this structure. The middle sections (WHAT'S ON THEIR
-MIND, THEIR VOICE) earn real depth — the rest stays tight. Every line cites its
-source in brackets, e.g. `[timeline]`, `[post 2026-05-21]`, `[site]`,
-`[prior brief]`.
+Synthesize everything into this structure — the Nous document house style:
+a `#` title, a `>` lede that IS the read, a plain `Key: value` snapshot block, a
+`---`, then `## Title-case` sections. The middle sections (What's on their mind,
+Their voice) earn real depth — the rest stays tight. Every line cites its source
+in brackets, e.g. `[timeline]`, `[post 2026-05-21]`, `[site]`, `[prior brief]`.
 
-```
-SNAPSHOT  — bullets, not a paragraph
-  • Name — role at **<Company>** (one line on what the company does).
-  • Call number — first call / second call / ongoing relationship.
-  • How you met — the entry point: talking on LinkedIn / Gmail thread /
-    replied to a campaign / booked via Cal.com / inbound off your post.
-  • Their stack — tools/platforms they work with, if known.
-  • ICP fit — score + label, if Nous has scored them.
-  (Skip CRM-plumbing noise like "connected", "awaiting reply", "last message".)
+```markdown
+# Pre-meeting brief — <Person>, <Company>
 
-WHERE THINGS STAND
-  The relationship in 2-4 lines: how it started, what's happened since, the last
-  thing said, any open thread or commitment. If a prior brief exists, lead with
-  what changed since then. [timeline] [prior brief]
+> The read, up top — 3-5 sentences, written like you're briefing a colleague in
+> the hallway 60 seconds before the call. Who this person is, where they're at,
+> why they matter to you, how warm the relationship is, what kind of conversation
+> to expect, and the one thing to walk away with. The synthesis that ties the
+> whole brief together, not a restatement of the bullets below.
 
-WHAT'S ON THEIR MIND  — the audit, give it real room
-  The longest section. A genuine read on what they're thinking about, from their
-  posts and company moves. For each recurring theme, write 3-5 sentences: what
-  the theme is, what they actually said (paraphrase + a short quote), a concrete
-  example, and why it matters for the conversation. Then cover what they're
-  building/shipping/attending right now and the tools they keep naming. Every
-  post referenced is a clickable markdown link to its `linkedinUrl`, e.g.
-  "[their 06-14 hackathon post](https://www.linkedin.com/posts/…)". The reader
-  should finish this section genuinely understanding this person's current world.
-  Err long here — this is the part the operator reads twice. [post …] [site]
+Person: <name> — <role> at <Company> (one line on what the company does)
+Meeting: <meeting name>, <YYYY-MM-DD>
+Call: first call / second call / ongoing relationship
+How you met: LinkedIn / Gmail thread / replied to a campaign / booked via Cal.com / inbound off your post
+Stack: <tools/platforms they work with, if known>
+ICP fit: <score + label, if Nous has scored them>
+Sources: [timeline] [post …] [site] [prior brief]
 
-THEIR VOICE  — a profile, not a label
-  How they show up: the form they post in, what they focus on, the platforms
-  they reference, what they reveal about their day, and their tone — then one
-  line naming what their voice *is* so you can mirror it. Back it with 3-5 short
-  verbatim phrases (linked to the posts they came from). [post …]
+(Skip CRM-plumbing noise like "connected", "awaiting reply", "last message".)
 
-YOUR ANGLE
-  How your offer maps to their world. The specific wedge for this account.
-  [gtm_profile]
+---
 
-BRING THIS UP  — fully-formed questions, ready to say out loud
-  3-5 items. Each one names HOW you know it, then asks the actual question, in
-  words you could say verbatim. Pattern:
-    "I saw you posted about <thing> — <specific question>?"
-    "On your <GTM Agent OS> post you said <X> — <question that follows from X>?"
-  Not "ask about his hackathon" but "I saw you built a competitive-intel agent at
-  Profound's hackathon — how are you feeding it account context across the AI
-  engines?" Each question must trace to a real signal above.
+## Where things stand
+The relationship in 2-4 lines: how it started, what's happened since, the last
+thing said, any open thread or commitment. If a prior brief exists, lead with
+what changed since then. [timeline] [prior brief]
 
-WATCH-OUTS
-  Sensitivities, unresolved items, anything to avoid. [timeline]
+## What's on their mind
+The longest section — the audit, give it real room. A genuine read on what
+they're thinking about, from their posts and company moves. For each recurring
+theme, write 3-5 sentences: what the theme is, what they actually said
+(paraphrase + a short quote), a concrete example, and why it matters for the
+conversation. Then cover what they're building/shipping/attending right now and
+the tools they keep naming. Every post referenced is a clickable markdown link to
+its `linkedinUrl`, e.g. "[their 06-14 hackathon post](https://www.linkedin.com/posts/…)".
+The reader should finish this section genuinely understanding this person's
+current world. Err long here — this is the part the operator reads twice. [post …] [site]
 
-NEXT STEP
-  The one move this meeting should produce.
+## Their voice
+A profile, not a label. How they show up: the form they post in, what they focus
+on, the platforms they reference, what they reveal about their day, and their
+tone — then one line naming what their voice *is* so you can mirror it. Back it
+with 3-5 short verbatim phrases (linked to the posts they came from). [post …]
 
-THE READ  — the final word, 4-6 sentences
-  A real summary of this account, written like you're briefing a colleague in
-  the hallway 60 seconds before the call. Who this person is, where they're at,
-  why they matter to you, how warm the relationship is, what kind of conversation
-  to expect, and the one thing to walk away with. Not a restatement of bullets —
-  the synthesis that ties the whole brief together so the operator walks in with
-  a point of view.
+## Your angle
+How your offer maps to their world. The specific wedge for this account. [gtm_profile]
+
+## Bring this up
+Fully-formed questions, ready to say out loud — 3-5 of them. Each one names HOW
+you know it, then asks the actual question, in words you could say verbatim. Each
+must trace to a real signal above.
+- "I saw you posted about <thing> — <specific question>?"
+- "On your <GTM Agent OS> post you said <X> — <question that follows from X>?"
+- Not "ask about his hackathon" but "I saw you built a competitive-intel agent at
+  Profound's hackathon — how are you feeding it account context across the AI engines?"
+
+## Watch-outs
+Sensitivities, unresolved items, anything to avoid. [timeline]
+
+## Next step
+The one move this meeting should produce.
 ```
 
 ### 7. Write the brief back to Nous (always — this is what makes it compound)

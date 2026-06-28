@@ -184,25 +184,36 @@ it must follow this **exact structure** every time, so every brief across every
 account is consistent and machine-readable. Title it `<Company> - Company Signals`
 (the company name + a plain hyphen, e.g. "Creatop - Company Signals").
 
+Follow the Nous document house style: a `#` title, a `>` lede that summarizes the
+account, a plain `Key: value` block, a `---`, then `## Title-case` sections — one
+per signal, strongest first.
+
 ```markdown
-## Signal Scan: <Company> (<domain>)   ICP fit: <score>/100
-**Summary:** <1-2 sentences: what they do, current situation, most interesting finding>
+# Signal scan — <Company>
 
-### Signal 1: <name> (Score X/10, <class>)
-**Detected:** <specific, factual, dated finding>
-**Situation it implies:** <their Monday-morning reality — what the buyer is dealing with>
-**Recommended approach:** Pain-led | Value-led | Fallback
-**Campaign angle:** <one sentence — the core message this signal enables>
-**Key data points for copy:**
+> <1-2 sentences: what they do, current situation, the most interesting finding>
+
+Domain: <domain>
+ICP fit: <score>/100
+Signals: <n> (strongest first)
+
+---
+
+## Signal 1: <name> — Score X/10, <class>
+Detected: <specific, factual, dated finding>
+Situation it implies: <their Monday-morning reality — what the buyer is dealing with>
+Recommended approach: Pain-led | Value-led | Fallback
+Campaign angle: <one sentence — the core message this signal enables>
+Key data points for copy:
 - <variable_name>: "<exact value>"
 - <variable_name>: "<exact value>"
 
-### Signal 2 … 3 …   (same structure, strongest first)
+## Signal 2 … 3 …   (same structure, strongest first)
 
-### Fallback (Score X/10)
-**Situation assumption:** <most common pain for this profile when no strong signal lands>
-**Campaign angle:** <one sentence>
-**Key data points for copy:**
+## Fallback — Score X/10
+Situation assumption: <most common pain for this profile when no strong signal lands>
+Campaign angle: <one sentence>
+Key data points for copy:
 - <variable_name>: "<exact value>"
 ```
 
@@ -216,8 +227,8 @@ Together: 6 signals (machine-scored) + 1 brief (the writer's input) per account.
 Print the structured scan so the operator sees it now:
 
 ```
-## Signal Scan: <Company>   ICP fit: <score>/100
-Summary: <1-2 sentences — what they do, their situation, the most interesting find>
+# Signal scan — <Company>   ICP fit: <score>/100
+> <1-2 sentences — what they do, their situation, the most interesting find>
 
 Signal 1: <name>  (Score X/10, <class>)
   Detected:   <factual finding>

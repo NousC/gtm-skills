@@ -95,10 +95,24 @@ Use the `summary` on the reply observations.
 
 ### 6. Write the report (client-facing)
 
-Polished, no internal jargon, one page where possible:
+Polished, no internal jargon, one page where possible. Follow the Nous document
+house style: a `#` title, a `>` lede that reads the week in one breath, a plain
+`Key: value` block with the headline numbers, a `---`, then `## Title-case` sections.
 
-```
+```markdown
 # <Client> — week of <date range>
+
+> The week in one read: the headline outcome, what moved, and the one thing we're
+> doing differently next week. Two or three sentences, client-facing.
+
+Period: <from> – <to>
+Leads added: <n>
+Sent: <n>
+Replies: <n> (<rate>)
+Positive: <n>
+Meetings booked: <n>
+
+---
 
 ## This week at a glance
   Leads added, sent, replies, positive replies, meetings booked. One line each.

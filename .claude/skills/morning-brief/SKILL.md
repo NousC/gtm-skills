@@ -91,9 +91,22 @@ save them to the Notion Kaizen DB as `Status=proposed`. Return a link.
 
 ### 5. Deliver the brief
 
-Write the full morning coffee, in this order:
+Write the full morning coffee in the Nous document house style: a `#` title, a
+`>` lede that calls the day, a plain `Key: value` block, a `---`, then the
+`## Title-case` sections in this order:
 
-```
+```markdown
+# Morning brief — <YYYY-MM-DD>
+
+> The day in one breath: the single most important thing to move today, where the
+> funnel stands, and the 1% you're improving. Two or three sentences.
+
+Focus: <the one move that matters most today>
+Funnel (7d): <sent> sent · <replies> replies · <positive> positive · <meetings> meetings
+Kaizen: <the 1% improvement proposed today>
+
+---
+
 ## What I'd work first today        — 2-3 prioritized actions, each tied to a goal/person
 ## Today + this week (Timestripe)    — day goals, week goals, open milestones
 ## Last 7 days in the funnel (Nous)  — momentum, conversations, follow-ups, cooled, voice of customer
