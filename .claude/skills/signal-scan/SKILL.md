@@ -204,6 +204,15 @@ class** (stored as the current `signal.<class>` fact, one per class):
   entity shared by all its people. Not a person email.
 - `signal_class` — stack | hiring | momentum | friction | domain (intent comes from
   `content-scan`, on the person — don't write intent here)
+  - **Two axes (this decides where the signal goes):** `hiring` and `momentum` are
+    company **INTENT** — they feed the **intent score** (decaying), inherited by
+    every person. `domain` / `stack` are company **FIT** — they feed the **ICP
+    score** (durable). `friction` is copy fuel. So record time-sensitive growth as
+    `momentum` and a hiring surge as `hiring`; record what-they-are as `domain`/`stack`.
+  - **Fold funding / product launch / news / expansion into `momentum`** — these are
+    all company-intent and there is no separate class; capture them as `momentum`
+    with the named copy-variables (e.g. `raise_size:"$5M Series A"`, `launch:"…"`,
+    `news:"…"`) so the email can name them even though the score reads them as momentum.
 - `detected` — the specific, factual finding
 - `implies` — their day-to-day reality (optional)
 - `score` — 0-10
