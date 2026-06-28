@@ -433,6 +433,7 @@ curl -s -X POST "https://api.opennous.cloud/api/lead-lists/<LIST_ID>/leads" \
           "linkedin_url":"https://www.linkedin.com/in/janedoe",
           "fields": { "title":"Founder", "domain":"acme.com",
                       "industry":"agency", "employee_count": 8,
+                      "keywords":["outbound agency","cold email","clay"], "description":"Outbound agency running cold email for B2B SaaS.",
                       "niche":"outbound GTM agency", "matched_on":"lookalike",
                       "icp_score": 86, "source":"lookalike_ai_ark" } } ] }'
 ```
@@ -442,11 +443,14 @@ Map from AI-Ark people fields: `name` ← `profile.full_name`, `linkedin_url` �
 `profile.title`, `email` ← the email-finder result. Dedup (Phase 4) keys on
 `link.linkedin`.
 
-**Always pass firmographics** — `fields.industry` ← `summary.industry` (the
-AI-Ark vertical, e.g. "agency") and `fields.employee_count` ← `summary.staff.range.start`
-(the size band you filtered on). These become company firmographic CLAIMS on
-ingest and are what the ICP scorecard scores on — without them the lead can't be
-scored. You already have both from the company search, so never drop them.
+**Always pass firmographics + descriptors** — `fields.industry` ← `summary.industry`
+(the AI-Ark vertical, e.g. "agency"), `fields.employee_count` ← `summary.staff.range.start`
+(the size band you filtered on), `fields.keywords` ← `keywords[]` (the company's own
+keywords), and `fields.description` ← the AI-Ark company description. These become
+company CLAIMS on ingest and are what the ICP scorecard scores on — the firmographics
+AND the keyword/description rules (incl. the cold-calling/branding disqualifiers).
+Without them the lead can't be scored. You already have all of them from the company
+search, so never drop them.
 
 Optionally **ICP-score every lead** against the Nous GTM profile before insert
 (same rubric as `sales-nav-builder` — score everything, drop nothing, the score

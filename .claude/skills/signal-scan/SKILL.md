@@ -131,6 +131,29 @@ company **from the site you just read**: does it genuinely match?
 If the block lists no exclusions, skip this step. An excluded account is out — you
 can stop scanning it for buying signals (it won't be worked).
 
+### 3c. Record the company's `description` + `keywords` (powers the keyword scorecard rules)
+The ICP scorecard reads two plain company features that firmographics don't give it:
+**`description`** (what the company does, one paragraph) and **`keywords`** (the GTM
+terms on their site). These drive the keyword-based **fit** rules (e.g. "outbound
+agency", "cold email", "AI-native", "RevOps") AND the keyword **disqualifiers**
+(cold-calling / branding) — so without them most of the scorecard can't fire. This
+is the durable fit-truth from the domain read (distinct from the `signal.*` buying
+signals). From the site you just read, `record` BOTH on the **company**:
+```
+record(focus: <domain>, observations: [
+  { kind: "state", property: "description",
+    value: "<1-paragraph, plain-English: what they do, who for, how>",
+    source: "signal-scan" },
+  { kind: "state", property: "keywords",
+    value: ["outbound agency","cold email","clay","ai sdr","lead generation"],
+    source: "signal-scan" }
+])
+```
+Keep `keywords` to the **5–12 concrete GTM terms actually on the site** — their
+services, channels, tools, niche — in the words a buyer would use (the scorecard
+matches them case-insensitively with `contains_any`). No fluff. If the site is too
+thin to describe them, say so and skip — never invent keywords.
+
 ### 4. Identify + rank signals
 Read **`references/signal-types.md`** — the full catalog (the six classes, where
 to find each, the 1-10 scoring rubric, and the patterns that amplify). For each
@@ -289,7 +312,9 @@ local file and no collision** when many run at once.
    > Exclusions to judge (key + description): `<paste the 'Not a fit' keys from the block>`.
    > Do steps 2-5b: `get_context` → `WebFetch` the site → judge each exclusion and
    > `record` any genuine match as `{kind:'state', property:'exclusion.<key>', value:{matched:true,evidence:…}}`
-   > on the company (caps it Not-ICP) → classify the six signal
+   > on the company (caps it Not-ICP) → `record` the company `description` (1 paragraph)
+   > and `keywords` (5–12 GTM terms) as state claims (step 3c — powers the keyword
+   > scorecard rules) → classify the six signal
    > classes → for each, extract the **key data points for copy** (named variables,
    > exact values) → `record_signal` the strongest per class → `save_note` the
    > **comprehensive brief** (the exact 5b structure, with Key data points for copy).
